@@ -43,11 +43,23 @@ window.DASH = window.DASH || {};
     { label: 'ビットコイン', symbol: 'BITSTAMP:BTCUSD' },
   ];
 
+  // レイアウト編集の対象パネル（id は index.html の data-panel）
+  DASH.PANELS = [
+    { id: 'clock', name: '時計' },
+    { id: 'now', name: '現在の天気' },
+    { id: 'hourly', name: '直近12時間の予報' },
+    { id: 'weekly', name: '週間天気予報' },
+    { id: 'news', name: 'ニュース' },
+    { id: 'market', name: 'マーケット' },
+  ];
+
   // 位置情報が使えないときの地点
   DASH.FALLBACK_LOCATION = { name: '東京都 千代田区', lat: 35.6812, lon: 139.7671 };
 
   DASH.DEFAULT_SETTINGS = {
     theme: 'auto', // auto | dark | light
+    // null は画面サイズごとの自動レイアウト。編集すると [{ id, visible, w, h }] を並び順で持つ
+    layout: null,
     location: { mode: 'auto', name: '', lat: null, lon: null },
     news: {
       // 表示するタブ（並び順どおりに表示）

@@ -236,6 +236,7 @@ h2 {
 /* ===== 時計 ===== */
 .clock {
   position: relative;
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -255,7 +256,8 @@ h2 {
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
   font-weight: 300;
-  font-size: clamp(64px, 7.2vw, 112px);
+  /* パネル幅に合わせる（「01:23:45」が収まる大きさ） */
+  font-size: clamp(44px, 23cqi, 112px);
   line-height: 1.05;
   letter-spacing: 0.01em;
   white-space: nowrap;
@@ -421,6 +423,12 @@ h2 {
 }
 
 /* ===== 週間 ===== */
+.weekly-card {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+}
+
 .weekly {
   display: grid;
   grid-auto-flow: column;
@@ -930,10 +938,6 @@ h2 {
 
 /* ===== コンパクトレイアウト（1200〜1399px）の部品調整 ===== */
 @media (min-width: 1200px) and (max-width: 1399px) {
-  .clock-time {
-    font-size: 84px;
-  }
-
   .hour {
     padding: 6px 2px;
   }
@@ -942,12 +946,31 @@ h2 {
     font-size: 24px;
   }
 
-  /* 週間予報を1日1行のリストにする */
-  .weekly-card {
-    display: flex;
-    flex-direction: column;
+  .market-main .m-widget {
+    height: 170px;
   }
 
+  .market-tiles {
+    margin-top: 10px;
+    gap: 8px;
+  }
+
+  /* 小さい銘柄はウィジェット側の銘柄名で足りるので表示名を省く */
+  .tile {
+    padding: 4px 6px 2px;
+  }
+
+  .tile .m-label {
+    display: none;
+  }
+
+  .tile .m-widget {
+    height: 104px;
+  }
+}
+
+/* 週間予報: パネルが狭いときは1日1行のリストにする */
+@container (max-width: 760px) {
   .weekly {
     flex: 1;
     grid-auto-flow: row;
@@ -983,26 +1006,208 @@ h2 {
   .d-pop {
     text-align: right;
   }
+}
 
-  .market-main .m-widget {
-    height: 170px;
+/* ===== カスタムレイアウト ===== */
+.card[hidden] {
+  display: none !important;
+}
+
+/* 名前付きエリアを外して並び順（order）どおりに自動配置する */
+.grid.custom > .card {
+  grid-area: auto;
+}
+
+/* 12列 × 画面の高さを12等分した行。パネルは --w 列 × --h 行を占める */
+@media (min-width: 900px) {
+  .grid.custom {
+    --row: max(40px, calc((100vh - 32px - 11 * var(--gap)) / 12));
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-rows: none;
+    grid-template-areas: none;
+    grid-auto-rows: var(--row);
+    grid-auto-flow: row dense;
+    min-height: 0;
   }
 
-  .market-tiles {
-    margin-top: 10px;
-    gap: 8px;
+  .grid.custom > .card {
+    grid-column: span var(--w, 4);
+    grid-row: span var(--h, 3);
+    min-height: 0;
+    overflow: auto;
+    scrollbar-width: thin;
   }
 
-  /* 小さい銘柄はウィジェット側の銘柄名で足りるので表示名を省く */
-  .tile {
-    padding: 4px 6px 2px;
+  .grid.custom .news-list {
+    max-height: none;
+    flex-basis: 0;
   }
 
-  .tile .m-label {
+  /* マーケットはメインのチャートをパネルの高さに合わせて伸縮させる */
+  .grid.custom .market-main {
+    flex: 1;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .grid.custom .market-main .m-widget {
+    flex: 1;
+    height: auto;
+  }
+}
+
+/* 時計パネルを隠したときは操作ボタンを右上に浮かせる */
+.clock-actions.floating {
+  position: fixed;
+  z-index: 40;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2px;
+}
+
+/* ===== レイアウト編集モード ===== */
+.editing .grid {
+  padding-bottom: 96px;
+}
+
+.editing .card {
+  position: relative;
+  overflow: hidden;
+}
+
+.editing .clock-actions {
+  visibility: hidden;
+}
+
+.edit-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+  backdrop-filter: blur(1px);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.card.dragging .edit-overlay {
+  cursor: grabbing;
+  border-style: solid;
+  background: color-mix(in srgb, var(--accent) 22%, var(--card));
+}
+
+.edit-name {
+  font-weight: 700;
+}
+
+.edit-size {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.edit-tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+
+.edit-tools button {
+  min-width: 30px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--card);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.edit-tools button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.edit-resize {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 22px;
+  height: 22px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(135deg, transparent 50%, var(--accent) 50%);
+  border-bottom-right-radius: calc(var(--radius) - 2px);
+}
+
+/* サイズ変更は12列のグリッドでのみ有効 */
+@media (max-width: 899px) {
+  .edit-resize,
+  .edit-overlay [data-size],
+  .edit-hint-size {
     display: none;
   }
+}
 
-  .tile .m-widget {
-    height: 104px;
-  }
+.edit-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  z-index: 50;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+.edit-bar[hidden] {
+  display: none;
+}
+
+.edit-hint {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.edit-hidden {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.edit-hidden:empty {
+  display: none;
+}
+
+.chip {
+  padding: 3px 10px;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  background: transparent;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }

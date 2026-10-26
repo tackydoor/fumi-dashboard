@@ -242,6 +242,7 @@
     $('#settings-dialog').close();
 
     DASH.util.applyTheme();
+    if (JSON.stringify(prev.layout) !== JSON.stringify(draft.layout)) DASH.layout.apply();
     if (JSON.stringify(prev.location) !== JSON.stringify(draft.location)) DASH.weather.start();
     if (JSON.stringify(prev.news) !== JSON.stringify(draft.news)) DASH.news.start();
     if (JSON.stringify(prev.market) !== JSON.stringify(draft.market) || prev.theme !== draft.theme) DASH.market.start();

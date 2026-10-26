@@ -91,6 +91,16 @@
         if (Number(saved.news.perTab) > 0) s.news.perTab = Number(saved.news.perTab);
         if (Number(saved.news.rotateSec) >= 0) s.news.rotateSec = Number(saved.news.rotateSec);
       }
+      if (Array.isArray(saved.layout)) {
+        const known = new Set(DASH.PANELS.map((p) => p.id));
+        const layout = saved.layout.filter((p) => p && known.has(p.id));
+        if (layout.length) {
+          DASH.PANELS.forEach((p) => {
+            if (!layout.some((x) => x.id === p.id)) layout.push({ id: p.id, visible: true, w: 4, h: 3 });
+          });
+          s.layout = layout;
+        }
+      }
       if (saved.market && typeof saved.market === 'object') {
         if (saved.market.range) s.market.range = saved.market.range;
         if (Array.isArray(saved.market.symbols)) s.market.symbols = saved.market.symbols.filter((x) => x && x.symbol);

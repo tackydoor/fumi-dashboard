@@ -6,6 +6,7 @@
 
   DASH.settings = DASH.util.loadSettings();
   DASH.util.applyTheme();
+  DASH.layout.init();
 
   DASH.clock.start();
   DASH.weather.start();
@@ -13,6 +14,7 @@
   DASH.market.start();
 
   $('#btn-settings').addEventListener('click', () => DASH.settingsUI.open());
+  $('#btn-layout').addEventListener('click', () => DASH.layout.enter());
 
   $('#btn-refresh').addEventListener('click', () => {
     DASH.weather.refresh();
