@@ -8,18 +8,14 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <header class="topbar">
-    <h1 class="brand">MyDashboard</h1>
-    <div class="topbar-actions">
-      <button type="button" class="icon-btn" id="btn-refresh" title="すべて更新" aria-label="すべて更新">⟳</button>
-      <button type="button" class="icon-btn" id="btn-fullscreen" title="全画面表示" aria-label="全画面表示">⛶</button>
-      <button type="button" class="icon-btn" id="btn-settings" title="設定" aria-label="設定">⚙</button>
-    </div>
-  </header>
-
   <main class="grid">
     <!-- 時計 -->
     <section class="card clock" aria-label="現在時刻">
+      <div class="clock-actions">
+        <button type="button" class="icon-btn" id="btn-refresh" title="すべて更新" aria-label="すべて更新">⟳</button>
+        <button type="button" class="icon-btn" id="btn-fullscreen" title="全画面表示" aria-label="全画面表示">⛶</button>
+        <button type="button" class="icon-btn" id="btn-settings" title="設定" aria-label="設定">⚙</button>
+      </div>
       <div class="clock-date">
         <span id="clock-ymd">----年--月--日</span>
         <span id="clock-wday" class="wday">（-）</span>
@@ -86,8 +82,8 @@
       <div class="market-main" id="market-main"></div>
       <div class="market-tiles" id="market-tiles"></div>
       <p class="card-foot">
-        ※ 日経平均（現物指数）はチャート提供元の配信制限があるため先物を表示しています。
-        <a href="https://indexes.nikkei.co.jp/nkave" target="_blank" rel="noopener">日経平均の公式値</a> ／
+        ※ 日経平均（現物指数）は配信制限のため先物で表示 ・
+        <a href="https://indexes.nikkei.co.jp/nkave" target="_blank" rel="noopener">公式値</a> ・
         Charts by <a href="https://jp.tradingview.com/" target="_blank" rel="noopener">TradingView</a>
       </p>
     </section>
