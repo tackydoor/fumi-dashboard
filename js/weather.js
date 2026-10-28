@@ -46,6 +46,7 @@
 
   let current = null; // { name, lat, lon }
   let timer = null;
+  let jmaCache = null; // { key: '緯度,経度', data } 直前に取得した気象庁の降水確率
 
   function setStatus(text) {
     $('#weather-status').textContent = text;
@@ -102,11 +103,16 @@
     }
   }
 
+  function statusText(popSource) {
+    return (DASH.weather.notice ? DASH.weather.notice + ' ・ ' : '') + '更新 ' + hhmm(new Date()) + ' ・ Open-Meteo ・ 降水確率: ' + popSource;
+  }
+
   async function fetchWeather() {
     if (!current) return;
+    const loc = current;
     const params = new URLSearchParams({
-      latitude: current.lat.toFixed(4),
-      longitude: current.lon.toFixed(4),
+      latitude: loc.lat.toFixed(4),
+      longitude: loc.lon.toFixed(4),
       current: 'temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m',
       hourly: 'temperature_2m,precipitation_probability,weather_code,is_day',
       daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset',
@@ -115,12 +121,30 @@
       wind_speed_unit: 'ms',
       forecast_days: '8',
     });
+    let data;
     try {
-      const data = await fetchJson('https://api.open-meteo.com/v1/forecast?' + params, 15000);
-      render(data);
-      setStatus((DASH.weather.notice ? DASH.weather.notice + ' ・ ' : '') + '更新 ' + hhmm(new Date()) + ' ・ Open-Meteo');
+      data = await fetchJson('https://api.open-meteo.com/v1/forecast?' + params, 15000);
     } catch (e) {
       setStatus('天気を取得できませんでした（' + e.message + '）');
+      return;
+    }
+
+    // 降水確率は日本国内なら気象庁を使う。取得に時間がかかることがあるので、
+    // 先に前回の気象庁の値（なければ Open-Meteo）で描画し、届いたら描き直す
+    const key = loc.lat + ',' + loc.lon;
+    const prev = jmaCache && jmaCache.key === key ? jmaCache.data : null;
+    render(data, prev);
+    setStatus(statusText(prev ? '気象庁（' + prev.name + '）' : '気象庁の予報を取得中…'));
+
+    try {
+      const jma = await DASH.jma.pops(loc.lat, loc.lon);
+      if (current !== loc) return; // 待っている間に地点が変わった
+      jmaCache = { key, data: jma };
+      render(data, jma);
+      setStatus(statusText(jma ? '気象庁（' + jma.name + '）' : 'Open-Meteo'));
+    } catch (e) {
+      if (current !== loc || prev) return;
+      setStatus(statusText('Open-Meteo（気象庁の予報を取得できませんでした）'));
     }
   }
 
@@ -128,9 +152,51 @@
     return v == null ? '--' : Math.round(v);
   }
 
-  function render(data) {
+  const BLOCK_SEC = 6 * 3600;
+
+  // 時間ごとの欄の下に、気象庁の6時間ごとの降水確率を該当する時間にまたがる帯で並べる
+  function popSegments(jma, times, hourOf) {
+    const blockAt = (t) => jma.blocks.find((b) => t >= b.start && t < b.start + BLOCK_SEC) || null;
+    const segs = [];
+    times.forEach((t, k) => {
+      const b = blockAt(t);
+      const last = segs[segs.length - 1];
+      if (last && last.block === b) last.to = k;
+      else segs.push({ block: b, from: k, to: k });
+    });
+    return segs.map((s) => {
+      const col = 'grid-column:' + (s.from + 1) + ' / ' + (s.to + 2);
+      if (!s.block || s.block.pop == null) {
+        return '<div class="pop-seg none" style="' + col + '" title="発表済みの気象庁の予報に含まれない時間帯です">—</div>';
+      }
+      const from = hourOf(s.block.start);
+      const range = from + '–' + (from + 6) + '時';
+      return '<div class="pop-seg" style="' + col + ';--p:' + Math.round(s.block.pop / 2) + '%" title="' + range + 'の降水確率（1mm以上） ' + s.block.pop + '%">' +
+        '<span class="seg-range">' + range + '</span><span class="seg-val">' + s.block.pop + '%</span></div>';
+    });
+  }
+
+  // 気象庁の日ごとの降水確率。今日・明日は週間予報に値がないので6時間ごと（0–6/6–12/12–18/18–24時）を並べる
+  function jmaDayPop(jma, key, hourOf, dateOf) {
+    const day = jma.days.find((x) => x.date === key);
+    if (day && day.pop != null) return { text: day.pop + '%', title: '降水確率（気象庁 ' + jma.weekName + '）' };
+    const slots = [0, 6, 12, 18].map((hr) => jma.blocks.find((b) => dateOf(b.start) === key && hourOf(b.start) === hr));
+    const val = (b) => (b && b.pop != null ? b.pop : null);
+    if (!slots.some((b) => val(b) != null)) return { text: '-', title: '気象庁の予報期間外です' };
+    return {
+      text: slots.map((b) => (val(b) == null ? '-' : val(b))).join('/') + '%',
+      title: '6時間ごとの降水確率（気象庁 ' + jma.name + '）: ' +
+        slots.map((b, k) => k * 6 + '–' + (k * 6 + 6) + '時 ' + (val(b) == null ? '-' : val(b) + '%')).join('、'),
+      blocks: true,
+    };
+  }
+
+  function render(data, jma) {
     const tz = data.timezone;
     const fmtHour = new Intl.DateTimeFormat('ja-JP', { hour: 'numeric', hourCycle: 'h23', timeZone: tz });
+    const fmtKey = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: tz }); // YYYY-MM-DD
+    const hourOf = (sec) => Number(fmtHour.formatToParts(new Date(sec * 1000)).find((p) => p.type === 'hour').value);
+    const dateOf = (sec) => fmtKey.format(new Date(sec * 1000));
     const fmtTime = new Intl.DateTimeFormat('ja-JP', { hour: '2-digit', minute: '2-digit', timeZone: tz });
     const fmtMD = new Intl.DateTimeFormat('ja-JP', { month: 'numeric', day: 'numeric', timeZone: tz });
     const fmtDay = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: tz });
@@ -162,20 +228,24 @@
     const nowSec = Date.now() / 1000;
     let start = h.time.findIndex((t) => t + 3600 > nowSec);
     if (start < 0) start = 0;
+    const end = Math.min(start + 12, h.time.length - 1);
     const cells = [];
-    for (let i = start; i < Math.min(start + 12, h.time.length); i++) {
+    for (let i = start; i < end; i++) {
       const hi = codeInfo(h.weather_code[i], h.is_day[i]);
-      const pop = h.precipitation_probability[i];
+      // Open-Meteo の降水確率は「その時刻までの1時間」の値なので、i時台（i時〜i+1時）の値は次の時刻に入っている
+      const pop = h.precipitation_probability[i + 1];
       cells.push(
-        '<div class="hour' + (i === start ? ' current' : '') + '" title="' + esc(hi.label) + '">' +
-          '<div class="h-time">' + (i === start ? '今' : Number(fmtHour.formatToParts(new Date(h.time[i] * 1000)).find((p) => p.type === 'hour').value) + '時') + '</div>' +
+        '<div class="hour' + (i === start ? ' current' : '') + '" style="grid-column:' + (i - start + 1) + '" title="' + esc(hi.label) + '">' +
+          '<div class="h-time">' + (i === start ? '今' : hourOf(h.time[i]) + '時') + '</div>' +
           '<div class="h-icon">' + hi.icon + '</div>' +
           '<div class="h-temp">' + fmtTemp(h.temperature_2m[i]) + '°</div>' +
-          '<div class="h-pop"><span class="pop-bar" style="--p:' + (pop || 0) + '%"></span>' + (pop == null ? '-' : pop + '%') + '</div>' +
+          (jma ? '' : '<div class="h-pop" title="この1時間の降水確率（0.1mm以上）"><span class="pop-bar" style="--p:' + (pop || 0) + '%"></span>' + (pop == null ? '-' : pop + '%') + '</div>') +
         '</div>',
       );
     }
+    if (jma) cells.push(...popSegments(jma, h.time.slice(start, end), hourOf));
     $('#hourly').innerHTML = cells.join('');
+    $('#hourly-src').textContent = jma ? '降水確率: 気象庁・6時間ごと' : '降水確率: 1時間ごと（Open-Meteo）';
 
     // 週間
     const weekMin = Math.min(...d.temperature_2m_min);
@@ -190,6 +260,9 @@
       const label = i === 0 ? '今日' : i === 1 ? '明日' : WDAYS[wd];
       const left = ((lo - weekMin) / span) * 100;
       const width = Math.max(4, ((hi - lo) / span) * 100);
+      const pop = jma
+        ? jmaDayPop(jma, dateOf(t + 12 * 3600), hourOf, dateOf)
+        : { text: (d.precipitation_probability_max[i] ?? '-') + '%', title: 'その日の1時間ごとの降水確率の最大値（Open-Meteo）' };
       return (
         '<div class="day' + (i === 0 ? ' today' : '') + '">' +
           '<div class="d-label' + (wd === 0 ? ' sun' : wd === 6 ? ' sat' : '') + '">' + label + '</div>' +
@@ -198,11 +271,12 @@
           '<div class="d-desc">' + esc(di.label) + '</div>' +
           '<div class="d-temp"><span class="hi">' + fmtTemp(hi) + '°</span><span class="lo">' + fmtTemp(lo) + '°</span></div>' +
           '<div class="d-range"><span style="left:' + left + '%;width:' + width + '%"></span></div>' +
-          '<div class="d-pop">☂ ' + (d.precipitation_probability_max[i] ?? '-') + '%</div>' +
+          '<div class="d-pop' + (pop.blocks ? ' blocks' : '') + '" title="' + esc(pop.title) + '">☂ ' + pop.text + '</div>' +
         '</div>'
       );
     });
     $('#weekly').innerHTML = days.join('');
+    $('#weekly-src').textContent = jma ? '降水確率: 気象庁（今日・明日は6時間ごと）' : '降水確率: 1時間ごとの最大（Open-Meteo）';
   }
 
   DASH.weather = {

@@ -373,12 +373,14 @@ h2 {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(58px, 1fr);
+  grid-template-rows: auto auto;
   gap: 6px;
   overflow-x: auto;
   scrollbar-width: thin;
 }
 
 .hour {
+  grid-row: 1;
   text-align: center;
   padding: 8px 4px;
   border-radius: 10px;
@@ -420,6 +422,35 @@ h2 {
   margin: 4px 6px 3px;
   border-radius: 2px;
   background: linear-gradient(to right, var(--pop) var(--p), var(--border) var(--p));
+}
+
+/* 気象庁の6時間ごとの降水確率（該当する時間の欄にまたがる帯） */
+.pop-seg {
+  grid-row: 2;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--pop) var(--p, 0%), var(--card-2));
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.pop-seg.none {
+  color: var(--muted);
+}
+
+.seg-range {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.seg-val {
+  font-weight: 700;
+  color: var(--pop);
 }
 
 /* ===== 週間 ===== */
@@ -502,6 +533,13 @@ h2 {
 .d-pop {
   font-size: 12px;
   color: var(--pop);
+  white-space: nowrap;
+}
+
+/* 今日・明日の6時間ごとの値（例: -/-/0/20%） */
+.d-pop.blocks {
+  font-size: 11px;
+  letter-spacing: -0.02em;
 }
 
 /* ===== ニュース ===== */
@@ -982,7 +1020,7 @@ h2 {
 
   .day {
     display: grid;
-    grid-template-columns: 2.4em 5.6em 1.8em minmax(0, 1fr) auto 3.6em;
+    grid-template-columns: 2.4em 5.6em 1.8em minmax(0, 1fr) auto minmax(3.6em, auto);
     align-items: center;
     column-gap: 8px;
     padding: 2px 8px;

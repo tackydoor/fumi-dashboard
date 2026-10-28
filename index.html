@@ -50,13 +50,13 @@
 
     <!-- 時間ごとの予報 -->
     <section class="card hourly-card" data-panel="hourly" aria-label="直近の天気予報">
-      <div class="card-head"><h2>直近12時間の予報</h2></div>
+      <div class="card-head"><h2>直近12時間の予報</h2><span class="muted small" id="hourly-src"></span></div>
       <div class="hourly" id="hourly"></div>
     </section>
 
     <!-- 週間予報 -->
     <section class="card weekly-card" data-panel="weekly" aria-label="週間天気予報">
-      <div class="card-head"><h2>週間天気予報</h2></div>
+      <div class="card-head"><h2>週間天気予報</h2><span class="muted small" id="weekly-src"></span></div>
       <div class="weekly" id="weekly"></div>
     </section>
 
@@ -118,6 +118,7 @@
   <script src="js/config.js"></script>
   <script src="js/util.js"></script>
   <script src="js/clock.js"></script>
+  <script src="js/jma.js"></script>
   <script src="js/weather.js"></script>
   <script src="js/news.js"></script>
   <script src="js/market.js"></script>
