@@ -124,6 +124,42 @@
     ).join('');
   }
 
+  // 追加のニュースパネル（生成AIニュース・ITテックニュース）の共通処理
+  // feeds: 取得するフィード、filter: 見出しの絞り込み関数を返す（任意）、check: 設定に問題があればメッセージを返す（任意）
+  function createPanel({ list, status, feeds, filter, check }) {
+    let timer = null;
+    let seq = 0;
+
+    async function render() {
+      const listEl = $(list);
+      const statusEl = $(status);
+      const problem = check && check();
+      if (problem) {
+        listEl.innerHTML = '<li class="empty">' + esc(problem) + '</li>';
+        statusEl.textContent = '';
+        return;
+      }
+      const mySeq = ++seq;
+      if (!listEl.children.length) listEl.innerHTML = '<li class="empty">読み込み中…</li>';
+
+      const { items, failed, total } = await collect(feeds(), filter ? filter() : null);
+      if (mySeq !== seq) return;
+      listEl.innerHTML = items.length
+        ? itemsHtml(items)
+        : '<li class="empty">' + (failed === total ? 'ニュースを取得できませんでした。' : '該当する記事がありません。') + '</li>';
+      statusEl.textContent = '更新 ' + hhmm(new Date()) + (failed ? '（' + failed + '件のフィードを取得できませんでした）' : '');
+    }
+
+    return {
+      start() {
+        clearInterval(timer);
+        render();
+        timer = setInterval(render, DASH.REFRESH.newsMs);
+      },
+      refresh: render,
+    };
+  }
+
   function renderTabs() {
     const tabs = enabledTabs();
     $('#news-tabs').innerHTML = tabs.map((t, i) =>
@@ -214,9 +250,8 @@
       return (await fetchFeed(url)).length;
     },
 
-    // 生成AIニュースのパネルと共用
-    collect,
-    itemsHtml,
+    // 生成AIニュース・ITテックニュースのパネルと共用
+    createPanel,
     allGenreFeeds,
   };
 })(window.DASH);

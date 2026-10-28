@@ -12,6 +12,7 @@
 | 週間天気予報 | 今日から8日分の天気・最高／最低気温・降水確率 | Open-Meteo、降水確率は気象庁 |
 | ニュース | ジャンル別の見出し（日経・読売・産経・CNN） | [wor.jp](https://assets.wor.jp/) の RSS、CNN.co.jp の RSS |
 | 生成AIニュース（任意） | 生成AIに関する見出し | 上記に加え CNET Japan・ZDNET Japan・WIRED.jp の RSS |
+| ITテックニュース（任意） | IT・テクノロジーの見出し | CNET Japan・ZDNET Japan・WIRED.jp、日経・読売のテクノロジー面の RSS。ITmedia NEWS・Publickey は中継サーバー経由 |
 | マーケット | 日経225先物、ドル/円、NYダウ、S&P500、NASDAQ100 など | [TradingView](https://jp.tradingview.com/) ウィジェット |
 
 現在地はブラウザの位置情報から取得し、地名は [BigDataCloud](https://www.bigdatacloud.com/) で調べます。位置情報が使えない場合は東京を表示します。
@@ -37,6 +38,26 @@
 
 主要紙（ニュースの「提供元」で選んだもの）と CNET Japan・ZDNET Japan・WIRED.jp の見出しから、生成AI、ChatGPT、OpenAI、Claude、LLM、AIエージェントなどのキーワードを含む記事を新しい順に表示します。キーワードは⚙設定で変更できます。
 
+## ITテックニュース
+
+IT・テクノロジーのニュースだけを並べるパネルです。生成AIニュースと同じく、⚙設定の「ITテックニュースのパネルを表示する」か、▦ レイアウト編集の「＋ ITテックニュース」で追加します。
+
+CNET Japan・ZDNET Japan・WIRED.jp と、日経・読売のテクノロジー面の見出しを新しい順に表示します（キーワードでの絞り込みはしません）。表示する提供元は⚙設定で選べます。
+
+### ITmedia NEWS・Publickey（中継サーバーが必要）
+
+ITmedia NEWS と Publickey のフィードはブラウザから直接読み込めない（CORS に対応していない）ため、自分で用意した中継サーバーを経由して取得します。中継サーバーの URL が未設定の間、この2つは表示されません。
+
+中継サーバーは [Cloudflare Workers](https://workers.cloudflare.com/) の無料プランで動かせます。
+
+1. Cloudflare のアカウントを作成し、ダッシュボードの「Workers & Pages」→「作成」→「Worker を作成」で新しい Worker を作ります（名前は例えば `feed-relay`）。
+2. 「コードを編集」を開き、中身を [relay/cloudflare-worker.js](relay/cloudflare-worker.js) の内容に置き換えて「デプロイ」します。
+3. 表示された URL（例: `https://feed-relay.<アカウント名>.workers.dev/`）を、⚙設定の「ITテックニュース」→「中継サーバー」に入力し、「接続を確認」で記事を取得できることを確かめてから保存します。
+
+中継サーバーは `?url=<フィードのURL>` で指定したフィードを取得し、CORS のヘッダーを付けて返します。誰でも任意のサイトを取得できる踏み台にならないよう、中継するのはスクリプト先頭の `ALLOWED_HOSTS` にあるホスト（ITmedia と Publickey）だけです。取得結果は5分間キャッシュします。
+
+自動レイアウトのまま追加パネルを表示すると、ニュースの欄（1920×1080 では2つ目をマーケットの下）を分け合う配置になります。1280×800 では追加パネル1つまでが1画面に収まり、2つとも表示すると縦にスクロールします。
+
 ## レイアウトの編集
 
 ▦ を押すと編集モードになり、パネルごとに次の操作ができます。
@@ -59,6 +80,7 @@
   - 任意の RSS フィードの追加
   - 提供元（日経・読売・産経・CNN）の選択、表示件数、タブの自動切替
 - **生成AIニュース**: パネルの表示／非表示と、見出しの絞り込みに使うキーワード（1行に1つ）
+- **ITテックニュース**: パネルの表示／非表示、表示する提供元、中継サーバーの URL（ITmedia NEWS・Publickey 用）
 - **マーケット**: 表示する銘柄の追加・削除・並べ替え（先頭がメイン表示）。チャートの期間（1日／1か月／1年）はパネル上で切り替え
 
 設定はブラウザの localStorage に保存されます（ブラウザごと・端末ごと）。
@@ -83,10 +105,12 @@ js/jma.js         気象庁の降水確率（予報区の特定と取得）
 js/weather.js     現在地・天気
 js/news.js        ニュース
 js/ainews.js      生成AIニュース
+js/technews.js    ITテックニュース
 js/market.js      マーケット
 js/settings.js    設定ダイアログ
 js/layout.js      レイアウト（表示／非表示・並び順・サイズ）と編集モード
 js/main.js        起動処理
+relay/cloudflare-worker.js  ITmedia NEWS・Publickey を取得する中継サーバー（Cloudflare Workers 用）
 ```
 
 `file://` でも動くよう、ES Modules は使わず通常の `<script>` で読み込んでいます。

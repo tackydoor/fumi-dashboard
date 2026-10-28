@@ -6,10 +6,18 @@
 
   let draft = null;
   let locResults = [];
-  let aiShow = false; // 生成AIニュースのパネルを表示するか（保存時にレイアウトへ反映）
+  let panelShow = {}; // 追加パネル（生成AIニュースなど）を表示するか。保存時にレイアウトへ反映する
 
-  function aiShown(settings) {
-    return !!(settings.layout && settings.layout.some((x) => x.id === 'ainews' && x.visible));
+  function shownPanels(settings) {
+    const show = {};
+    DASH.PANELS.filter((p) => p.optional).forEach((p) => {
+      show[p.id] = !!(settings.layout && settings.layout.some((x) => x.id === p.id && x.visible));
+    });
+    return show;
+  }
+
+  function showCheckbox(id, label) {
+    return '<label class="row"><input type="checkbox" data-act="panel-show" data-panel="' + id + '"' + (panelShow[id] ? ' checked' : '') + '> ' + label + '</label>';
   }
 
   function tabLabel(tab) {
@@ -89,10 +97,23 @@
 
       // 生成AIニュース
       '<fieldset><legend>生成AIニュース</legend>' +
-        '<label class="row"><input type="checkbox" data-act="ai-show"' + (aiShow ? ' checked' : '') + '> 生成AIニュースのパネルを表示する</label>' +
+        showCheckbox('ainews', '生成AIニュースのパネルを表示する') +
         '<p class="muted small">主要紙（上の「提供元」で選んだもの）と CNET Japan・ZDNET Japan・WIRED.jp から、見出しに次のキーワードのいずれかを含む記事を集めます。1行に1つ入力します（大文字小文字・全角半角は区別しません）。</p>' +
         '<textarea id="ai-keywords" data-field="aiKeywords" rows="6" spellcheck="false">' + esc(s.aiNews.keywords.join('\n')) + '</textarea>' +
         '<div class="row"><button type="button" class="btn ghost" data-act="ai-reset">キーワードを初期値に戻す</button></div>' +
+      '</fieldset>' +
+
+      // ITテックニュース
+      '<fieldset><legend>ITテックニュース</legend>' +
+        showCheckbox('technews', 'ITテックニュースのパネルを表示する') +
+        '<p class="muted small">IT 系ニュースサイトと主要紙のテクノロジー面の見出しを新しい順に表示します。</p>' +
+        '<div class="row wrap">' + DASH.TECH_NEWS_FEEDS.map((f) =>
+          '<label><input type="checkbox" data-act="tech-src" data-key="' + f.key + '"' + (s.techNews.sources[f.key] !== false ? ' checked' : '') + '> ' + esc(f.label) + (f.relay ? '※' : '') + '</label>').join('') +
+        '</div>' +
+        '<div class="sub"><div class="sub-title">中継サーバー（※の提供元用）</div>' +
+          '<div class="row"><input type="url" id="relay-url" data-field="relayUrl" placeholder="https://feed-relay.example.workers.dev/" value="' + esc(s.techNews.relayUrl) + '"><button type="button" class="btn" data-act="relay-test">接続を確認</button></div>' +
+          '<div class="muted small" id="relay-msg">※の提供元はブラウザから直接読み込めない（CORS 非対応の）ため、自分で用意した中継サーバー（Cloudflare Workers など）経由で取得します。未設定の間は表示されません。用意のしかたは README を参照してください。</div>' +
+        '</div>' +
       '</fieldset>' +
 
       // 株価
@@ -134,7 +155,7 @@
         if (confirm('すべての設定を初期状態に戻しますか？')) {
           draft = clone(DASH.DEFAULT_SETTINGS);
           locResults = [];
-          aiShow = false;
+          panelShow = shownPanels(draft);
           render();
         }
         return;
@@ -172,6 +193,22 @@
           $('#rss-msg').textContent = '追加しました（' + count + '件の記事）。';
         } catch (err) {
           msg.textContent = '読み込めませんでした（' + err.message + '）。CORS 非対応のフィードはブラウザ単体では表示できません。';
+        }
+        return;
+      }
+      case 'relay-test': {
+        const url = $('#relay-url').value.trim();
+        const msg = $('#relay-msg');
+        if (!/^https?:\/\//.test(url)) {
+          msg.textContent = 'URL を http(s):// から入力してください。';
+          return;
+        }
+        msg.textContent = '確認中…';
+        try {
+          const count = await DASH.techNews.testRelay(url);
+          msg.textContent = '接続できました（' + count + '件の記事）。';
+        } catch (err) {
+          msg.textContent = '中継サーバー経由で読み込めませんでした（' + err.message + '）。URL と中継サーバーの設定を確認してください。';
         }
         return;
       }
@@ -230,8 +267,10 @@
       draft.news.tabs[i].enabled = el.checked;
     } else if (el.dataset.act === 'src-toggle') {
       draft.news.sources[el.dataset.key] = el.checked;
-    } else if (el.dataset.act === 'ai-show') {
-      aiShow = el.checked;
+    } else if (el.dataset.act === 'panel-show') {
+      panelShow[el.dataset.panel] = el.checked;
+    } else if (el.dataset.act === 'tech-src') {
+      draft.techNews.sources[el.dataset.key] = el.checked;
     }
   }
 
@@ -240,13 +279,14 @@
     const i = Number(el.dataset.i);
     if (el.dataset.act === 'sym-label') draft.market.symbols[i].label = el.value;
     else if (el.dataset.act === 'sym-symbol') draft.market.symbols[i].symbol = el.value.trim();
+    else if (el.dataset.field === 'relayUrl') draft.techNews.relayUrl = el.value.trim();
     else if (el.dataset.field === 'aiKeywords') draft.aiNews.keywords = el.value.split('\n').map((k) => k.trim()).filter(Boolean);
   }
 
   function onKeydown(e) {
     if (e.key !== 'Enter' || e.target.tagName !== 'INPUT') return;
     e.preventDefault();
-    const target = { 'loc-q': 'loc-search', 'kw-q': 'kw-add', 'rss-url': 'rss-add' }[e.target.id];
+    const target = { 'loc-q': 'loc-search', 'kw-q': 'kw-add', 'rss-url': 'rss-add', 'relay-url': 'relay-test' }[e.target.id];
     if (target) $('[data-act="' + target + '"]', $('#settings-body')).click();
   }
 
@@ -257,11 +297,17 @@
       alert('地点を検索して選択してください。');
       return;
     }
-    // 生成AIニュースのパネルの表示はレイアウトの一部として保存する
-    if (aiShow !== aiShown(draft)) {
-      if (aiShow) draft.layout = DASH.layout.showPanel(draft.layout || DASH.layout.defaultLayout(false), 'ainews');
-      else draft.layout.find((x) => x.id === 'ainews').visible = false;
+    if (draft.techNews.relayUrl && !/^https?:\/\/[^/]/.test(draft.techNews.relayUrl)) {
+      alert('中継サーバーの URL を http(s):// から入力してください。');
+      return;
     }
+    // 追加パネルの表示はレイアウトの一部として保存する
+    const current = shownPanels(draft);
+    Object.keys(panelShow).forEach((id) => {
+      if (panelShow[id] === current[id]) return;
+      if (panelShow[id]) draft.layout = DASH.layout.showPanel(draft.layout || DASH.layout.defaultLayout(), id);
+      else draft.layout = DASH.layout.hidePanel(draft.layout, id);
+    });
     DASH.settings = draft;
     DASH.util.saveSettings(draft);
     $('#settings-dialog').close();
@@ -271,6 +317,7 @@
     if (JSON.stringify(prev.location) !== JSON.stringify(draft.location)) DASH.weather.start();
     if (JSON.stringify(prev.news) !== JSON.stringify(draft.news)) DASH.news.start();
     if (JSON.stringify(prev.news) !== JSON.stringify(draft.news) || JSON.stringify(prev.aiNews) !== JSON.stringify(draft.aiNews)) DASH.aiNews.start();
+    if (JSON.stringify(prev.news) !== JSON.stringify(draft.news) || JSON.stringify(prev.techNews) !== JSON.stringify(draft.techNews)) DASH.techNews.start();
     if (JSON.stringify(prev.market) !== JSON.stringify(draft.market) || prev.theme !== draft.theme) DASH.market.start();
   }
 
@@ -288,7 +335,7 @@
       }
       draft = clone(DASH.settings);
       locResults = [];
-      aiShow = aiShown(DASH.settings);
+      panelShow = shownPanels(DASH.settings);
       render();
       dlg.showModal();
     },

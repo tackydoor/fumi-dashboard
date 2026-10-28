@@ -544,7 +544,8 @@ h2 {
 
 /* ===== ニュース ===== */
 .news-card,
-.ainews-card {
+.ainews-card,
+.technews-card {
   display: flex;
   flex-direction: column;
   min-height: 360px;
@@ -604,7 +605,8 @@ h2 {
     margin-bottom: 8px;
   }
   .news-card,
-  .ainews-card {
+  .ainews-card,
+  .technews-card {
     min-height: 280px;
   }
   .news-list {
@@ -663,6 +665,8 @@ h2 {
 .src-cnet { background: #6a3fb5; }
 .src-zdnet { background: #1f7a8c; }
 .src-wired { background: #3a3f47; }
+.src-itmedia { background: #c4122f; }
+.src-publickey { background: #2b7a3d; }
 
 /* ===== マーケット ===== */
 .market-card {

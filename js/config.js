@@ -14,12 +14,24 @@ window.DASH = window.DASH || {};
     cnn: { name: 'CNN', className: 'src-cnn' },
   };
 
-  // 生成AIニュースだけで使う IT 系の提供元
-  DASH.AI_NEWS_SOURCES = {
+  // 生成AIニュースと ITテックニュースで使う IT 系の提供元
+  DASH.TECH_SOURCES = {
     cnet: { name: 'CNET', className: 'src-cnet', url: 'https://feeds.japan.cnet.com/rss/cnet/all.rdf' },
     zdnet: { name: 'ZDNET', className: 'src-zdnet', url: 'https://feeds.japan.zdnet.com/rss/zdnet/all.rdf' },
     wired: { name: 'WIRED', className: 'src-wired', url: 'https://wired.jp/feed/rss' },
   };
+
+  // ITテックニュースのフィード（key は設定での選択に使う）
+  // relay: CORS に対応していないため、設定した中継サーバー（relay/cloudflare-worker.js）経由で取得する
+  DASH.TECH_NEWS_FEEDS = [
+    { key: 'cnet', label: 'CNET Japan', url: DASH.TECH_SOURCES.cnet.url, source: DASH.TECH_SOURCES.cnet },
+    { key: 'zdnet', label: 'ZDNET Japan', url: DASH.TECH_SOURCES.zdnet.url, source: DASH.TECH_SOURCES.zdnet },
+    { key: 'wired', label: 'WIRED.jp', url: DASH.TECH_SOURCES.wired.url, source: DASH.TECH_SOURCES.wired },
+    { key: 'itmedia', label: 'ITmedia NEWS', url: 'https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml', source: { name: 'ITmedia', className: 'src-itmedia' }, relay: true },
+    { key: 'publickey', label: 'Publickey', url: 'https://www.publickey1.jp/atom.xml', source: { name: 'Publickey', className: 'src-publickey' }, relay: true },
+    { key: 'nikkei', label: '日経（テクノロジー）', url: WOR + 'nikkei/technology.rdf', source: DASH.NEWS_SOURCES.nikkei },
+    { key: 'yomiuri', label: '読売（テクノロジー）', url: WOR + 'yomiuri/science.rdf', source: DASH.NEWS_SOURCES.yomiuri },
+  ];
 
   // 生成AIニュースの見出しの絞り込み（いずれかを含む記事。大文字小文字・全角半角・空白は区別しない）
   DASH.AI_NEWS_KEYWORDS = [
@@ -67,6 +79,7 @@ window.DASH = window.DASH || {};
     { id: 'market', name: 'マーケット' },
     // optional: 自動レイアウトでは表示せず、設定やレイアウト編集で追加するパネル
     { id: 'ainews', name: '生成AIニュース', optional: true },
+    { id: 'technews', name: 'ITテックニュース', optional: true },
   ];
 
   // 位置情報が使えないときの地点
@@ -90,6 +103,10 @@ window.DASH = window.DASH || {};
     },
     aiNews: {
       keywords: DASH.AI_NEWS_KEYWORDS.slice(),
+    },
+    techNews: {
+      sources: { cnet: true, zdnet: true, wired: true, itmedia: true, publickey: true, nikkei: true, yomiuri: true },
+      relayUrl: '', // 中継サーバーの URL（空なら relay のフィードは取得しない）
     },
     market: {
       range: '1D',

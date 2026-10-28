@@ -104,6 +104,8 @@
       if (saved.aiNews && Array.isArray(saved.aiNews.keywords)) {
         s.aiNews.keywords = saved.aiNews.keywords.filter((k) => typeof k === 'string' && k.trim());
       }
+      if (saved.techNews && saved.techNews.sources) Object.assign(s.techNews.sources, saved.techNews.sources);
+      if (saved.techNews && typeof saved.techNews.relayUrl === 'string') s.techNews.relayUrl = saved.techNews.relayUrl;
       if (saved.market && typeof saved.market === 'object') {
         if (saved.market.range) s.market.range = saved.market.range;
         if (Array.isArray(saved.market.symbols)) s.market.symbols = saved.market.symbols.filter((x) => x && x.symbol);

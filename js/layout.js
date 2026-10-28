@@ -27,29 +27,50 @@
     return DASH.settings.layout.find((x) => x.id === id);
   }
 
-  // 編集開始時の配置: 今の画面幅の自動レイアウトに近づける
-  // showOptional のときは生成AIニュースの分を空けた配置にする
-  function defaultLayout(showOptional) {
-    const p = (id, w, h, visible = true) => ({ id, visible, w, h });
-    const width = window.innerWidth;
-    if (width >= 1400) {
-      return showOptional
-        ? [p('clock', 4, 3), p('now', 4, 3), p('market', 4, 12), p('hourly', 8, 3), p('weekly', 8, 3), p('news', 4, 3), p('ainews', 4, 3)]
-        : [p('clock', 4, 3), p('now', 4, 3), p('market', 4, 12), p('hourly', 8, 3), p('weekly', 8, 3), p('news', 8, 3), p('ainews', 4, 3, false)];
-    }
-    if (width >= 1200) {
-      return showOptional
-        ? [p('clock', 4, 3), p('now', 8, 3), p('hourly', 8, 3), p('market', 4, 9), p('news', 4, 3), p('weekly', 4, 6), p('ainews', 4, 3)]
-        : [p('clock', 4, 3), p('now', 8, 3), p('hourly', 8, 3), p('market', 4, 9), p('news', 4, 6), p('weekly', 4, 6), p('ainews', 4, 3, false)];
-    }
-    return [p('clock', 5, 3), p('now', 7, 3), p('hourly', 12, 3), p('weekly', 12, 4), p('news', 7, 6), p('market', 5, 6), p('ainews', 12, 5, !!showOptional)];
+  function optionalIds() {
+    return DASH.PANELS.filter((p) => p.optional).map((p) => p.id);
   }
 
-  // 未編集の配置のまま追加パネルを出すときは、その分を空けた配置に置き換える
+  // 編集開始時の配置: 今の画面幅の自動レイアウトに近づける
+  // shownOptional に含まれる追加パネル（生成AIニュースなど）は、ニュースやマーケットの欄を分け合って配置する
+  function defaultLayout(shownOptional = []) {
+    const p = (id, w, h) => ({ id, visible: true, w, h });
+    const shown = optionalIds().filter((id) => shownOptional.includes(id));
+    const hidden = optionalIds().filter((id) => !shown.includes(id)).map((id) => ({ id, visible: false, w: 4, h: 3 }));
+    const n = shown.length;
+    const width = window.innerWidth;
+    let base;
+    if (width >= 1400) {
+      // 1つ目は下段のニュースの右、2つ目は右列のマーケットの下
+      base = [p('clock', 4, 3), p('now', 4, 3), p('market', 4, n >= 2 ? 9 : 12), p('hourly', 8, 3), p('weekly', 8, 3), p('news', n ? 4 : 8, 3)];
+    } else if (width >= 1200) {
+      // 左下のニュースの欄を上下に分ける（2つ目以降は1画面に収まらない）
+      base = [p('clock', 4, 3), p('now', 8, 3), p('hourly', 8, 3), p('market', 4, 9), p('news', 4, n ? 3 : 6), p('weekly', 4, 6)];
+    } else {
+      base = [p('clock', 5, 3), p('now', 7, 3), p('hourly', 12, 3), p('weekly', 12, 4), p('news', 7, 6), p('market', 5, 6)];
+    }
+    const extra = shown.map((id) => (width >= 1200 ? p(id, 4, 3) : p(id, 12, 5)));
+    return [...base, ...extra, ...hidden];
+  }
+
+  function shownOptional(layout) {
+    return optionalIds().filter((id) => layout.some((x) => x.id === id && x.visible));
+  }
+
+  // 標準の配置のままかどうか（このときは追加パネルの表示を切り替えると配置を組み直す）
+  function isDefault(layout) {
+    return JSON.stringify(layout) === JSON.stringify(defaultLayout(shownOptional(layout)));
+  }
+
   function showPanel(layout, id) {
-    const panel = DASH.PANELS.find((p) => p.id === id);
-    if (panel && panel.optional && JSON.stringify(layout) === JSON.stringify(defaultLayout(false))) return defaultLayout(true);
+    if (optionalIds().includes(id) && isDefault(layout)) return defaultLayout([...shownOptional(layout), id]);
     layout.find((x) => x.id === id).visible = true;
+    return layout;
+  }
+
+  function hidePanel(layout, id) {
+    if (optionalIds().includes(id) && isDefault(layout)) return defaultLayout(shownOptional(layout).filter((x) => x !== id));
+    layout.find((x) => x.id === id).visible = false;
     return layout;
   }
 
@@ -157,7 +178,7 @@
       case 'w+': item.w = clamp(item.w + 1, MIN_W, COLS); break;
       case 'h-': item.h = clamp(item.h - 1, MIN_H, MAX_H); break;
       case 'h+': item.h = clamp(item.h + 1, MIN_H, MAX_H); break;
-      case 'hide': item.visible = false; break;
+      case 'hide': DASH.settings.layout = hidePanel(DASH.settings.layout, item.id); break;
       default: return;
     }
     apply();
@@ -280,5 +301,6 @@
     enter,
     defaultLayout,
     showPanel,
+    hidePanel,
   };
 })(window.DASH);
