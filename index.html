@@ -70,6 +70,15 @@
       <ol class="news-list" id="news-list"></ol>
     </section>
 
+    <!-- 生成AIニュース（⚙設定やレイアウト編集で表示する） -->
+    <section class="card ainews-card" data-panel="ainews" aria-label="生成AIニュース" hidden>
+      <div class="card-head">
+        <h2>生成AIニュース</h2>
+        <span class="muted small" id="ainews-status"></span>
+      </div>
+      <ol class="news-list" id="ainews-list"></ol>
+    </section>
+
     <!-- 株価 -->
     <section class="card market-card" data-panel="market" aria-label="株価・マーケット">
       <div class="card-head">
@@ -121,6 +130,7 @@
   <script src="js/jma.js"></script>
   <script src="js/weather.js"></script>
   <script src="js/news.js"></script>
+  <script src="js/ainews.js"></script>
   <script src="js/market.js"></script>
   <script src="js/settings.js"></script>
   <script src="js/layout.js"></script>

@@ -28,16 +28,29 @@
   }
 
   // 編集開始時の配置: 今の画面幅の自動レイアウトに近づける
-  function defaultLayout() {
-    const p = (id, w, h) => ({ id, visible: true, w, h });
+  // showOptional のときは生成AIニュースの分を空けた配置にする
+  function defaultLayout(showOptional) {
+    const p = (id, w, h, visible = true) => ({ id, visible, w, h });
     const width = window.innerWidth;
     if (width >= 1400) {
-      return [p('clock', 4, 3), p('now', 4, 3), p('market', 4, 12), p('hourly', 8, 3), p('weekly', 8, 3), p('news', 8, 3)];
+      return showOptional
+        ? [p('clock', 4, 3), p('now', 4, 3), p('market', 4, 12), p('hourly', 8, 3), p('weekly', 8, 3), p('news', 4, 3), p('ainews', 4, 3)]
+        : [p('clock', 4, 3), p('now', 4, 3), p('market', 4, 12), p('hourly', 8, 3), p('weekly', 8, 3), p('news', 8, 3), p('ainews', 4, 3, false)];
     }
     if (width >= 1200) {
-      return [p('clock', 4, 3), p('now', 8, 3), p('hourly', 8, 3), p('market', 4, 9), p('news', 4, 6), p('weekly', 4, 6)];
+      return showOptional
+        ? [p('clock', 4, 3), p('now', 8, 3), p('hourly', 8, 3), p('market', 4, 9), p('news', 4, 3), p('weekly', 4, 6), p('ainews', 4, 3)]
+        : [p('clock', 4, 3), p('now', 8, 3), p('hourly', 8, 3), p('market', 4, 9), p('news', 4, 6), p('weekly', 4, 6), p('ainews', 4, 3, false)];
     }
-    return [p('clock', 5, 3), p('now', 7, 3), p('hourly', 12, 3), p('weekly', 12, 4), p('news', 7, 6), p('market', 5, 6)];
+    return [p('clock', 5, 3), p('now', 7, 3), p('hourly', 12, 3), p('weekly', 12, 4), p('news', 7, 6), p('market', 5, 6), p('ainews', 12, 5, !!showOptional)];
+  }
+
+  // 未編集の配置のまま追加パネルを出すときは、その分を空けた配置に置き換える
+  function showPanel(layout, id) {
+    const panel = DASH.PANELS.find((p) => p.id === id);
+    if (panel && panel.optional && JSON.stringify(layout) === JSON.stringify(defaultLayout(false))) return defaultLayout(true);
+    layout.find((x) => x.id === id).visible = true;
+    return layout;
   }
 
   function save() {
@@ -59,7 +72,7 @@
         el.style.removeProperty('order');
         el.style.removeProperty('--w');
         el.style.removeProperty('--h');
-        el.hidden = false;
+        el.hidden = !!p.optional;
       }
     });
   }
@@ -246,7 +259,7 @@
       $('#edit-hidden').addEventListener('click', (e) => {
         const chip = e.target.closest('[data-show]');
         if (!chip) return;
-        findItem(chip.dataset.show).visible = true;
+        DASH.settings.layout = showPanel(DASH.settings.layout, chip.dataset.show);
         apply();
         save();
       });
@@ -265,5 +278,7 @@
 
     apply,
     enter,
+    defaultLayout,
+    showPanel,
   };
 })(window.DASH);

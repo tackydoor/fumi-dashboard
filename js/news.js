@@ -58,26 +58,40 @@
     return tab.name || 'RSS';
   }
 
-  // タブに対応するフィード一覧: [{ url, source: {name, className} }]
-  function feedsFor(tab) {
+  function genreFeeds(g) {
     const sources = DASH.settings.news.sources;
-    const fromGenre = (g) => g.feeds
+    return g.feeds
       .filter(([key]) => sources[key] !== false)
       .map(([key, url]) => ({ url, source: DASH.NEWS_SOURCES[key] }));
+  }
 
+  // 全ジャンルのフィード（重複なし）
+  function allGenreFeeds() {
+    const seen = new Set();
+    return DASH.NEWS_GENRES.flatMap(genreFeeds).filter((f) => !seen.has(f.url) && seen.add(f.url));
+  }
+
+  // タブに対応するフィード一覧: [{ url, source: {name, className} }]
+  function feedsFor(tab) {
     if (tab.type === 'genre') {
       const g = DASH.NEWS_GENRES.find((x) => x.id === tab.id);
-      return g ? fromGenre(g) : [];
+      return g ? genreFeeds(g) : [];
     }
-    if (tab.type === 'keyword') {
-      const seen = new Set();
-      return DASH.NEWS_GENRES.flatMap(fromGenre).filter((f) => !seen.has(f.url) && seen.add(f.url));
-    }
+    if (tab.type === 'keyword') return allGenreFeeds();
     return [{ url: tab.url, source: { name: tab.name || 'RSS', className: 'src-custom' } }];
   }
 
   async function loadTab(tab) {
-    const feeds = feedsFor(tab);
+    let filter = null;
+    if (tab.type === 'keyword') {
+      const terms = tab.query.toLowerCase().split(/[\s　]+/).filter(Boolean);
+      filter = (title) => terms.some((t) => title.toLowerCase().includes(t));
+    }
+    return collect(feedsFor(tab), filter);
+  }
+
+  // フィードをまとめて取得し、見出しで絞り込んで新しい順に並べる
+  async function collect(feeds, filter) {
     if (!feeds.length) return { items: [], failed: 0, total: 0 };
     const results = await Promise.allSettled(feeds.map((f) => fetchFeed(f.url)));
     let items = [];
@@ -86,11 +100,7 @@
       if (r.status === 'fulfilled') items.push(...r.value.map((it) => ({ ...it, source: feeds[i].source })));
       else failed++;
     });
-
-    if (tab.type === 'keyword') {
-      const terms = tab.query.toLowerCase().split(/[\s　]+/).filter(Boolean);
-      items = items.filter((it) => terms.some((t) => it.title.toLowerCase().includes(t)));
-    }
+    if (filter) items = items.filter((it) => filter(it.title));
 
     // 同じ見出しを除外して新しい順に
     const seen = new Set();
@@ -102,6 +112,16 @@
     });
     items.sort((a, b) => (b.date ? b.date.getTime() : 0) - (a.date ? a.date.getTime() : 0));
     return { items: items.slice(0, DASH.settings.news.perTab), failed, total: feeds.length };
+  }
+
+  function itemsHtml(items) {
+    return items.map((it) =>
+      '<li><a href="' + esc(it.link) + '" target="_blank" rel="noopener noreferrer">' +
+        '<span class="src ' + esc(it.source.className) + '">' + esc(it.source.name) + '</span>' +
+        '<span class="title">' + esc(it.title) + '</span>' +
+        (it.date ? '<time datetime="' + it.date.toISOString() + '" title="' + it.date.toLocaleString('ja-JP') + '">' + relTime(it.date) + '</time>' : '') +
+      '</a></li>',
+    ).join('');
   }
 
   function renderTabs() {
@@ -135,13 +155,7 @@
         ? 'ニュースを取得できませんでした。' + (tab.type === 'rss' ? 'このフィードはブラウザからの直接取得（CORS）に対応していない可能性があります。' : '')
         : '該当する記事がありません。') + '</li>';
     } else {
-      list.innerHTML = items.map((it) =>
-        '<li><a href="' + esc(it.link) + '" target="_blank" rel="noopener noreferrer">' +
-          '<span class="src ' + esc(it.source.className) + '">' + esc(it.source.name) + '</span>' +
-          '<span class="title">' + esc(it.title) + '</span>' +
-          (it.date ? '<time datetime="' + it.date.toISOString() + '" title="' + it.date.toLocaleString('ja-JP') + '">' + relTime(it.date) + '</time>' : '') +
-        '</a></li>',
-      ).join('');
+      list.innerHTML = itemsHtml(items);
     }
     status.textContent = '更新 ' + hhmm(new Date()) + (failed ? '（' + failed + '件のフィードを取得できませんでした）' : '');
   }
@@ -199,5 +213,10 @@
     async test(url) {
       return (await fetchFeed(url)).length;
     },
+
+    // 生成AIニュースのパネルと共用
+    collect,
+    itemsHtml,
+    allGenreFeeds,
   };
 })(window.DASH);

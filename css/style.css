@@ -543,7 +543,8 @@ h2 {
 }
 
 /* ===== ニュース ===== */
-.news-card {
+.news-card,
+.ainews-card {
   display: flex;
   flex-direction: column;
   min-height: 360px;
@@ -602,7 +603,8 @@ h2 {
   .card-head {
     margin-bottom: 8px;
   }
-  .news-card {
+  .news-card,
+  .ainews-card {
     min-height: 280px;
   }
   .news-list {
@@ -658,6 +660,9 @@ h2 {
 .src-sankei { background: #c0392b; }
 .src-cnn { background: #8e1c1c; }
 .src-custom { background: #4b8a5f; }
+.src-cnet { background: #6a3fb5; }
+.src-zdnet { background: #1f7a8c; }
+.src-wired { background: #3a3f47; }
 
 /* ===== マーケット ===== */
 .market-card {
@@ -831,6 +836,7 @@ h2 {
 .settings input[type="text"],
 .settings input[type="url"],
 .settings input[type="search"],
+.settings textarea,
 .settings select {
   flex: 1;
   min-width: 0;
@@ -838,6 +844,14 @@ h2 {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--card-2);
+}
+
+.settings textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .settings .w-sm {

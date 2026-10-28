@@ -96,10 +96,13 @@
         const layout = saved.layout.filter((p) => p && known.has(p.id));
         if (layout.length) {
           DASH.PANELS.forEach((p) => {
-            if (!layout.some((x) => x.id === p.id)) layout.push({ id: p.id, visible: true, w: 4, h: 3 });
+            if (!layout.some((x) => x.id === p.id)) layout.push({ id: p.id, visible: !p.optional, w: 4, h: 3 });
           });
           s.layout = layout;
         }
+      }
+      if (saved.aiNews && Array.isArray(saved.aiNews.keywords)) {
+        s.aiNews.keywords = saved.aiNews.keywords.filter((k) => typeof k === 'string' && k.trim());
       }
       if (saved.market && typeof saved.market === 'object') {
         if (saved.market.range) s.market.range = saved.market.range;

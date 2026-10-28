@@ -6,6 +6,11 @@
 
   let draft = null;
   let locResults = [];
+  let aiShow = false; // 生成AIニュースのパネルを表示するか（保存時にレイアウトへ反映）
+
+  function aiShown(settings) {
+    return !!(settings.layout && settings.layout.some((x) => x.id === 'ainews' && x.visible));
+  }
 
   function tabLabel(tab) {
     if (tab.type === 'genre') return (DASH.NEWS_GENRES.find((g) => g.id === tab.id) || {}).name || tab.id;
@@ -82,6 +87,14 @@
         '</div>' +
       '</fieldset>' +
 
+      // 生成AIニュース
+      '<fieldset><legend>生成AIニュース</legend>' +
+        '<label class="row"><input type="checkbox" data-act="ai-show"' + (aiShow ? ' checked' : '') + '> 生成AIニュースのパネルを表示する</label>' +
+        '<p class="muted small">主要紙（上の「提供元」で選んだもの）と CNET Japan・ZDNET Japan・WIRED.jp から、見出しに次のキーワードのいずれかを含む記事を集めます。1行に1つ入力します（大文字小文字・全角半角は区別しません）。</p>' +
+        '<textarea id="ai-keywords" data-field="aiKeywords" rows="6" spellcheck="false">' + esc(s.aiNews.keywords.join('\n')) + '</textarea>' +
+        '<div class="row"><button type="button" class="btn ghost" data-act="ai-reset">キーワードを初期値に戻す</button></div>' +
+      '</fieldset>' +
+
       // 株価
       '<fieldset><legend>マーケット</legend>' +
         '<p class="muted small">先頭の銘柄が大きく表示されます。シンボルは TradingView の表記（例: FX_IDC:USDJPY）です。</p>' +
@@ -121,6 +134,7 @@
         if (confirm('すべての設定を初期状態に戻しますか？')) {
           draft = clone(DASH.DEFAULT_SETTINGS);
           locResults = [];
+          aiShow = false;
           render();
         }
         return;
@@ -130,6 +144,9 @@
         swap(arr, i, act === 'up' ? i - 1 : i + 1);
         break;
       }
+      case 'ai-reset':
+        draft.aiNews.keywords = DASH.AI_NEWS_KEYWORDS.slice();
+        break;
       case 'tab-del':
         draft.news.tabs.splice(i, 1);
         break;
@@ -213,6 +230,8 @@
       draft.news.tabs[i].enabled = el.checked;
     } else if (el.dataset.act === 'src-toggle') {
       draft.news.sources[el.dataset.key] = el.checked;
+    } else if (el.dataset.act === 'ai-show') {
+      aiShow = el.checked;
     }
   }
 
@@ -221,6 +240,7 @@
     const i = Number(el.dataset.i);
     if (el.dataset.act === 'sym-label') draft.market.symbols[i].label = el.value;
     else if (el.dataset.act === 'sym-symbol') draft.market.symbols[i].symbol = el.value.trim();
+    else if (el.dataset.field === 'aiKeywords') draft.aiNews.keywords = el.value.split('\n').map((k) => k.trim()).filter(Boolean);
   }
 
   function onKeydown(e) {
@@ -237,6 +257,11 @@
       alert('地点を検索して選択してください。');
       return;
     }
+    // 生成AIニュースのパネルの表示はレイアウトの一部として保存する
+    if (aiShow !== aiShown(draft)) {
+      if (aiShow) draft.layout = DASH.layout.showPanel(draft.layout || DASH.layout.defaultLayout(false), 'ainews');
+      else draft.layout.find((x) => x.id === 'ainews').visible = false;
+    }
     DASH.settings = draft;
     DASH.util.saveSettings(draft);
     $('#settings-dialog').close();
@@ -245,6 +270,7 @@
     if (JSON.stringify(prev.layout) !== JSON.stringify(draft.layout)) DASH.layout.apply();
     if (JSON.stringify(prev.location) !== JSON.stringify(draft.location)) DASH.weather.start();
     if (JSON.stringify(prev.news) !== JSON.stringify(draft.news)) DASH.news.start();
+    if (JSON.stringify(prev.news) !== JSON.stringify(draft.news) || JSON.stringify(prev.aiNews) !== JSON.stringify(draft.aiNews)) DASH.aiNews.start();
     if (JSON.stringify(prev.market) !== JSON.stringify(draft.market) || prev.theme !== draft.theme) DASH.market.start();
   }
 
@@ -262,6 +288,7 @@
       }
       draft = clone(DASH.settings);
       locResults = [];
+      aiShow = aiShown(DASH.settings);
       render();
       dlg.showModal();
     },

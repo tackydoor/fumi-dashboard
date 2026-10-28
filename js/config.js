@@ -14,6 +14,20 @@ window.DASH = window.DASH || {};
     cnn: { name: 'CNN', className: 'src-cnn' },
   };
 
+  // 生成AIニュースだけで使う IT 系の提供元
+  DASH.AI_NEWS_SOURCES = {
+    cnet: { name: 'CNET', className: 'src-cnet', url: 'https://feeds.japan.cnet.com/rss/cnet/all.rdf' },
+    zdnet: { name: 'ZDNET', className: 'src-zdnet', url: 'https://feeds.japan.zdnet.com/rss/zdnet/all.rdf' },
+    wired: { name: 'WIRED', className: 'src-wired', url: 'https://wired.jp/feed/rss' },
+  };
+
+  // 生成AIニュースの見出しの絞り込み（いずれかを含む記事。大文字小文字・全角半角・空白は区別しない）
+  DASH.AI_NEWS_KEYWORDS = [
+    '生成AI', 'ChatGPT', 'GPT', 'OpenAI', 'オープンAI', 'Gemini', 'ジェミニ', 'Claude', 'Anthropic', 'アンソロピック',
+    'LLM', '言語モデル', 'Copilot', 'コパイロット', 'AIエージェント', 'エージェント型AI', '画像生成', '動画生成',
+    'DeepSeek', 'ディープシーク', 'Grok', 'xAI', 'Perplexity', 'Midjourney', 'Stable Diffusion', 'Sora', 'Llama', 'Mistral',
+  ];
+
   // ニュースジャンル: feeds は [提供元キー, フィードURL]
   DASH.NEWS_GENRES = [
     { id: 'top', name: '主要', feeds: [['nikkei', WOR + 'nikkei/news.rdf'], ['yomiuri', WOR + 'yomiuri/latestnews.rdf'], ['sankei', WOR + 'sankei/flash.rdf']] },
@@ -51,6 +65,8 @@ window.DASH = window.DASH || {};
     { id: 'weekly', name: '週間天気予報' },
     { id: 'news', name: 'ニュース' },
     { id: 'market', name: 'マーケット' },
+    // optional: 自動レイアウトでは表示せず、設定やレイアウト編集で追加するパネル
+    { id: 'ainews', name: '生成AIニュース', optional: true },
   ];
 
   // 位置情報が使えないときの地点
@@ -71,6 +87,9 @@ window.DASH = window.DASH || {};
       sources: { nikkei: true, yomiuri: true, sankei: true, cnn: true },
       perTab: 15,
       rotateSec: 0,
+    },
+    aiNews: {
+      keywords: DASH.AI_NEWS_KEYWORDS.slice(),
     },
     market: {
       range: '1D',
