@@ -104,26 +104,46 @@
   }
 
   function statusText(popSource) {
-    return (DASH.weather.notice ? DASH.weather.notice + ' ・ ' : '') + '更新 ' + hhmm(new Date()) + ' ・ Open-Meteo ・ 降水確率: ' + popSource;
+    return (DASH.weather.notice ? DASH.weather.notice + ' ・ ' : '') + '更新 ' + hhmm(new Date()) + ' ・ Open-Meteo（気象庁モデル） ・ 降水確率: ' + popSource;
   }
 
   async function fetchWeather() {
     if (!current) return;
     const loc = current;
-    const params = new URLSearchParams({
+    const base = {
       latitude: loc.lat.toFixed(4),
       longitude: loc.lon.toFixed(4),
-      current: 'temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m',
-      hourly: 'temperature_2m,precipitation_probability,weather_code,is_day',
-      daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset',
       timezone: 'auto',
       timeformat: 'unixtime',
-      wind_speed_unit: 'ms',
       forecast_days: '8',
+    };
+    // 天気・気温は気象庁のモデル（直近はメソモデル、その先は全球モデル）を使う
+    const params = new URLSearchParams({
+      ...base,
+      models: 'jma_seamless',
+      current: 'temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m',
+      hourly: 'temperature_2m,weather_code,is_day',
+      daily: 'weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset',
+      wind_speed_unit: 'ms',
+    });
+    // 気象庁のモデルには降水確率がないため、気象庁の予報を使えないときの予備として標準のモデルから取得する
+    const popParams = new URLSearchParams({
+      ...base,
+      hourly: 'precipitation_probability',
+      daily: 'precipitation_probability_max',
     });
     let data;
     try {
-      data = await fetchJson('https://api.open-meteo.com/v1/forecast?' + params, 15000);
+      const [main, pop] = await Promise.allSettled([
+        fetchJson('https://api.open-meteo.com/v1/forecast?' + params, 15000),
+        fetchJson('https://api.open-meteo.com/v1/forecast?' + popParams, 15000),
+      ]);
+      if (main.status === 'rejected') throw main.reason;
+      data = main.value;
+      const hours = data.hourly.time.length;
+      const days = data.daily.time.length;
+      data.hourly.precipitation_probability = pop.status === 'fulfilled' ? pop.value.hourly.precipitation_probability : Array(hours).fill(null);
+      data.daily.precipitation_probability_max = pop.status === 'fulfilled' ? pop.value.daily.precipitation_probability_max : Array(days).fill(null);
     } catch (e) {
       setStatus('天気を取得できませんでした（' + e.message + '）');
       return;
