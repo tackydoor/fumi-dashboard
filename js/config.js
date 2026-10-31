@@ -22,7 +22,7 @@ window.DASH = window.DASH || {};
   };
 
   // ITテックニュースのフィード（key は設定での選択に使う）
-  // relay: CORS に対応していないため、設定した中継サーバー（relay/cloudflare-worker.js）経由で取得する
+  // relay: CORS に対応していないため、設定した中継サーバー（relay/cloudflare-worker.js）経由で取得する（以下同じ）
   DASH.TECH_NEWS_FEEDS = [
     { key: 'cnet', label: 'CNET Japan', url: DASH.TECH_SOURCES.cnet.url, source: DASH.TECH_SOURCES.cnet },
     { key: 'zdnet', label: 'ZDNET Japan', url: DASH.TECH_SOURCES.zdnet.url, source: DASH.TECH_SOURCES.zdnet },
@@ -31,6 +31,23 @@ window.DASH = window.DASH || {};
     { key: 'publickey', label: 'Publickey', url: 'https://www.publickey1.jp/atom.xml', source: { name: 'Publickey', className: 'src-publickey' }, relay: true },
     { key: 'nikkei', label: '日経（テクノロジー）', url: WOR + 'nikkei/technology.rdf', source: DASH.NEWS_SOURCES.nikkei },
     { key: 'yomiuri', label: '読売（テクノロジー）', url: WOR + 'yomiuri/science.rdf', source: DASH.NEWS_SOURCES.yomiuri },
+  ];
+
+  // ITセキュリティニュースの専門サイトのフィード（すべての記事を表示する）
+  DASH.SECURITY_NEWS_FEEDS = [
+    { key: 'piyolog', label: 'piyolog', url: 'https://piyolog.hatenadiary.jp/feed', source: { name: 'piyolog', className: 'src-piyolog' } },
+    { key: 'securitynext', label: 'Security NEXT', url: 'https://www.security-next.com/feed', source: { name: 'SecNEXT', className: 'src-secnext' }, relay: true },
+    { key: 'itmedia', label: 'ITmedia NEWS（セキュリティ）', url: 'https://rss.itmedia.co.jp/rss/2.0/news_security.xml', source: { name: 'ITmedia', className: 'src-itmedia' }, relay: true },
+    { key: 'scan', label: 'ScanNetSecurity', url: 'https://scan.netsecurity.ne.jp/rss/index.rdf', source: { name: 'Scan', className: 'src-scan' }, relay: true },
+    { key: 'jpcert', label: 'JPCERT/CC（注意喚起など）', url: 'https://www.jpcert.or.jp/rss/jpcert.rdf', source: { name: 'JPCERT', className: 'src-jpcert' }, relay: true },
+    { key: 'ipa', label: 'IPA（重要なセキュリティ情報）', url: 'https://www.ipa.go.jp/security/alert-rss.rdf', source: { name: 'IPA', className: 'src-ipa' }, relay: true },
+  ];
+
+  // ITセキュリティニュースで、主要紙と IT 系ニュースサイトの見出しから拾うキーワード
+  DASH.SECURITY_NEWS_KEYWORDS = [
+    'セキュリティ', 'サイバー', '脆弱性', 'ぜい弱性', 'ランサムウェア', 'マルウェア', '不正アクセス', '不正ログイン', '不正送金',
+    '情報漏えい', '情報漏洩', '個人情報', 'フィッシング', 'ハッキング', 'ハッカー', 'ゼロデイ', 'DDoS', '標的型', '乗っ取り',
+    'なりすまし', 'スパイウェア', 'ボットネット', 'ゼロトラスト', 'CVE',
   ];
 
   // 生成AIニュースの見出しの絞り込み（いずれかを含む記事。大文字小文字・全角半角・空白は区別しない）
@@ -80,6 +97,7 @@ window.DASH = window.DASH || {};
     // optional: 自動レイアウトでは表示せず、設定やレイアウト編集で追加するパネル
     { id: 'ainews', name: '生成AIニュース', optional: true },
     { id: 'technews', name: 'ITテックニュース', optional: true },
+    { id: 'secnews', name: 'ITセキュリティニュース', optional: true },
   ];
 
   // 位置情報が使えないときの地点
@@ -106,8 +124,13 @@ window.DASH = window.DASH || {};
     },
     techNews: {
       sources: { cnet: true, zdnet: true, wired: true, itmedia: true, publickey: true, nikkei: true, yomiuri: true },
-      relayUrl: '', // 中継サーバーの URL（空なら relay のフィードは取得しない）
     },
+    secNews: {
+      sources: { piyolog: true, securitynext: true, itmedia: true, scan: true, jpcert: true, ipa: true },
+      keywords: DASH.SECURITY_NEWS_KEYWORDS.slice(),
+    },
+    // CORS 非対応のフィード（relay: true）を取得する中継サーバーの URL。空なら relay のフィードは取得しない
+    relayUrl: '',
     market: {
       range: '1D',
       symbols: [

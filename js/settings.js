@@ -110,10 +110,26 @@
         '<div class="row wrap">' + DASH.TECH_NEWS_FEEDS.map((f) =>
           '<label><input type="checkbox" data-act="tech-src" data-key="' + f.key + '"' + (s.techNews.sources[f.key] !== false ? ' checked' : '') + '> ' + esc(f.label) + (f.relay ? '※' : '') + '</label>').join('') +
         '</div>' +
-        '<div class="sub"><div class="sub-title">中継サーバー（※の提供元用）</div>' +
-          '<div class="row"><input type="url" id="relay-url" data-field="relayUrl" placeholder="https://feed-relay.example.workers.dev/" value="' + esc(s.techNews.relayUrl) + '"><button type="button" class="btn" data-act="relay-test">接続を確認</button></div>' +
-          '<div class="muted small" id="relay-msg">※の提供元はブラウザから直接読み込めない（CORS 非対応の）ため、自分で用意した中継サーバー（Cloudflare Workers など）経由で取得します。未設定の間は表示されません。用意のしかたは README を参照してください。</div>' +
+        '<p class="muted small">※の提供元は下の「中継サーバー」を設定すると表示されます。</p>' +
+      '</fieldset>' +
+
+      // ITセキュリティニュース
+      '<fieldset><legend>ITセキュリティニュース</legend>' +
+        showCheckbox('secnews', 'ITセキュリティニュースのパネルを表示する') +
+        '<p class="muted small">セキュリティ専門サイトの記事を新しい順に表示します。※の提供元は下の「中継サーバー」を設定すると表示されます。</p>' +
+        '<div class="row wrap">' + DASH.SECURITY_NEWS_FEEDS.map((f) =>
+          '<label><input type="checkbox" data-act="sec-src" data-key="' + f.key + '"' + (s.secNews.sources[f.key] !== false ? ' checked' : '') + '> ' + esc(f.label) + (f.relay ? '※' : '') + '</label>').join('') +
         '</div>' +
+        '<p class="muted small">あわせて、主要紙（ニュースの「提供元」で選んだもの）と CNET Japan・ZDNET Japan・WIRED.jp から、見出しに次のキーワードのいずれかを含む記事も集めます。1行に1つ入力します（空にするとキーワードでは集めません）。</p>' +
+        '<textarea data-field="secKeywords" rows="6" spellcheck="false">' + esc(s.secNews.keywords.join('\n')) + '</textarea>' +
+        '<div class="row"><button type="button" class="btn ghost" data-act="sec-reset">キーワードを初期値に戻す</button></div>' +
+      '</fieldset>' +
+
+      // 中継サーバー
+      '<fieldset><legend>中継サーバー</legend>' +
+        '<p class="muted small">ITテックニュース・ITセキュリティニュースの※の提供元はブラウザから直接読み込めない（CORS 非対応の）ため、自分で用意した中継サーバー（Cloudflare Workers など）経由で取得します。未設定の間は表示されません。用意のしかたは README を参照してください。</p>' +
+        '<div class="row"><input type="url" id="relay-url" data-field="relayUrl" placeholder="https://feed-relay.example.workers.dev/" value="' + esc(s.relayUrl) + '"><button type="button" class="btn" data-act="relay-test">接続を確認</button></div>' +
+        '<div class="muted small" id="relay-msg"></div>' +
       '</fieldset>' +
 
       // 株価
@@ -168,6 +184,9 @@
       case 'ai-reset':
         draft.aiNews.keywords = DASH.AI_NEWS_KEYWORDS.slice();
         break;
+      case 'sec-reset':
+        draft.secNews.keywords = DASH.SECURITY_NEWS_KEYWORDS.slice();
+        break;
       case 'tab-del':
         draft.news.tabs.splice(i, 1);
         break;
@@ -205,7 +224,7 @@
         }
         msg.textContent = '確認中…';
         try {
-          const count = await DASH.techNews.testRelay(url);
+          const count = await DASH.news.testRelay(url);
           msg.textContent = '接続できました（' + count + '件の記事）。';
         } catch (err) {
           msg.textContent = '中継サーバー経由で読み込めませんでした（' + err.message + '）。URL と中継サーバーの設定を確認してください。';
@@ -271,6 +290,8 @@
       panelShow[el.dataset.panel] = el.checked;
     } else if (el.dataset.act === 'tech-src') {
       draft.techNews.sources[el.dataset.key] = el.checked;
+    } else if (el.dataset.act === 'sec-src') {
+      draft.secNews.sources[el.dataset.key] = el.checked;
     }
   }
 
@@ -279,7 +300,8 @@
     const i = Number(el.dataset.i);
     if (el.dataset.act === 'sym-label') draft.market.symbols[i].label = el.value;
     else if (el.dataset.act === 'sym-symbol') draft.market.symbols[i].symbol = el.value.trim();
-    else if (el.dataset.field === 'relayUrl') draft.techNews.relayUrl = el.value.trim();
+    else if (el.dataset.field === 'relayUrl') draft.relayUrl = el.value.trim();
+    else if (el.dataset.field === 'secKeywords') draft.secNews.keywords = el.value.split('\n').map((k) => k.trim()).filter(Boolean);
     else if (el.dataset.field === 'aiKeywords') draft.aiNews.keywords = el.value.split('\n').map((k) => k.trim()).filter(Boolean);
   }
 
@@ -297,7 +319,7 @@
       alert('地点を検索して選択してください。');
       return;
     }
-    if (draft.techNews.relayUrl && !/^https?:\/\/[^/]/.test(draft.techNews.relayUrl)) {
+    if (draft.relayUrl && !/^https?:\/\/[^/]/.test(draft.relayUrl)) {
       alert('中継サーバーの URL を http(s):// から入力してください。');
       return;
     }
@@ -317,7 +339,10 @@
     if (JSON.stringify(prev.location) !== JSON.stringify(draft.location)) DASH.weather.start();
     if (JSON.stringify(prev.news) !== JSON.stringify(draft.news)) DASH.news.start();
     if (JSON.stringify(prev.news) !== JSON.stringify(draft.news) || JSON.stringify(prev.aiNews) !== JSON.stringify(draft.aiNews)) DASH.aiNews.start();
-    if (JSON.stringify(prev.news) !== JSON.stringify(draft.news) || JSON.stringify(prev.techNews) !== JSON.stringify(draft.techNews)) DASH.techNews.start();
+    const newsChanged = JSON.stringify(prev.news) !== JSON.stringify(draft.news);
+    const relayChanged = prev.relayUrl !== draft.relayUrl;
+    if (newsChanged || relayChanged || JSON.stringify(prev.techNews) !== JSON.stringify(draft.techNews)) DASH.techNews.start();
+    if (newsChanged || relayChanged || JSON.stringify(prev.secNews) !== JSON.stringify(draft.secNews)) DASH.secNews.start();
     if (JSON.stringify(prev.market) !== JSON.stringify(draft.market) || prev.theme !== draft.theme) DASH.market.start();
   }
 

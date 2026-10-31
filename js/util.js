@@ -105,7 +105,13 @@
         s.aiNews.keywords = saved.aiNews.keywords.filter((k) => typeof k === 'string' && k.trim());
       }
       if (saved.techNews && saved.techNews.sources) Object.assign(s.techNews.sources, saved.techNews.sources);
-      if (saved.techNews && typeof saved.techNews.relayUrl === 'string') s.techNews.relayUrl = saved.techNews.relayUrl;
+      if (saved.secNews && saved.secNews.sources) Object.assign(s.secNews.sources, saved.secNews.sources);
+      if (saved.secNews && Array.isArray(saved.secNews.keywords)) {
+        s.secNews.keywords = saved.secNews.keywords.filter((k) => typeof k === 'string' && k.trim());
+      }
+      // 中継サーバーの URL は以前は techNews に保存していた
+      const relayUrl = typeof saved.relayUrl === 'string' ? saved.relayUrl : saved.techNews && saved.techNews.relayUrl;
+      if (typeof relayUrl === 'string') s.relayUrl = relayUrl;
       if (saved.market && typeof saved.market === 'object') {
         if (saved.market.range) s.market.range = saved.market.range;
         if (Array.isArray(saved.market.symbols)) s.market.symbols = saved.market.symbols.filter((x) => x && x.symbol);

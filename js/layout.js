@@ -41,8 +41,9 @@
     const width = window.innerWidth;
     let base;
     if (width >= 1400) {
-      // 1つ目は下段のニュースの右、2つ目は右列のマーケットの下
-      base = [p('clock', 4, 3), p('now', 4, 3), p('market', 4, n >= 2 ? 9 : 12), p('hourly', 8, 3), p('weekly', 8, 3), p('news', n ? 4 : 8, 3)];
+      // 1つ目は下段のニュースの右、2つ目は右列のマーケットの下。
+      // 3つ目まで表示するときはマーケットを半分にし、ニュースを週間予報の右、追加パネルを下段に並べる
+      base = [p('clock', 4, 3), p('now', 4, 3), p('market', 4, n >= 3 ? 6 : n >= 2 ? 9 : 12), p('hourly', 8, 3), p('weekly', 8, 3), p('news', n ? 4 : 8, 3)];
     } else if (width >= 1200) {
       // 左下のニュースの欄を上下に分ける（2つ目以降は1画面に収まらない）
       base = [p('clock', 4, 3), p('now', 8, 3), p('hourly', 8, 3), p('market', 4, 9), p('news', 4, n ? 3 : 6), p('weekly', 4, 6)];

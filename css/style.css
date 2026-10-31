@@ -545,7 +545,8 @@ h2 {
 /* ===== ニュース ===== */
 .news-card,
 .ainews-card,
-.technews-card {
+.technews-card,
+.secnews-card {
   display: flex;
   flex-direction: column;
   min-height: 360px;
@@ -606,7 +607,8 @@ h2 {
   }
   .news-card,
   .ainews-card,
-  .technews-card {
+  .technews-card,
+  .secnews-card {
     min-height: 280px;
   }
   .news-list {
@@ -667,6 +669,11 @@ h2 {
 .src-wired { background: #3a3f47; }
 .src-itmedia { background: #c4122f; }
 .src-publickey { background: #2b7a3d; }
+.src-piyolog { background: #5b6b7f; }
+.src-secnext { background: #0b5394; }
+.src-scan { background: #7a4a1f; }
+.src-jpcert { background: #b03a2e; }
+.src-ipa { background: #00796b; }
 
 /* ===== マーケット ===== */
 .market-card {

@@ -13,6 +13,7 @@
   DASH.news.start();
   DASH.aiNews.start();
   DASH.techNews.start();
+  DASH.secNews.start();
   DASH.market.start();
 
   $('#btn-settings').addEventListener('click', () => DASH.settingsUI.open());
@@ -20,7 +21,7 @@
 
   $('#btn-refresh').addEventListener('click', () => {
     DASH.weather.refresh();
-    DASH.news.refresh().then(() => { DASH.aiNews.refresh(); DASH.techNews.refresh(); });
+    DASH.news.refresh().then(() => { DASH.aiNews.refresh(); DASH.techNews.refresh(); DASH.secNews.refresh(); });
     DASH.market.refresh();
   });
 
@@ -36,7 +37,7 @@
       hiddenAt = Date.now();
     } else if (hiddenAt && Date.now() - hiddenAt > 10 * 60 * 1000) {
       DASH.weather.refresh();
-      DASH.news.refresh().then(() => { DASH.aiNews.refresh(); DASH.techNews.refresh(); });
+      DASH.news.refresh().then(() => { DASH.aiNews.refresh(); DASH.techNews.refresh(); DASH.secNews.refresh(); });
     }
   });
 })(window.DASH);

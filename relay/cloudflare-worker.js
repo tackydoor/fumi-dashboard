@@ -10,6 +10,10 @@
 const ALLOWED_HOSTS = [
   'rss.itmedia.co.jp',
   'www.publickey1.jp',
+  'www.security-next.com',
+  'scan.netsecurity.ne.jp',
+  'www.jpcert.or.jp',
+  'www.ipa.go.jp',
 ];
 
 const CACHE_SECONDS = 300;

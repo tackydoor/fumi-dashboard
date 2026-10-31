@@ -91,16 +91,20 @@
   }
 
   // フィードをまとめて取得し、見出しで絞り込んで新しい順に並べる
-  async function collect(feeds, filter) {
+  // all: true のフィードは絞り込まずにすべての記事を使う。perSource を指定すると提供元ごとの件数を制限する
+  async function collect(feeds, filter, perSource) {
     if (!feeds.length) return { items: [], failed: 0, total: 0 };
     const results = await Promise.allSettled(feeds.map((f) => fetchFeed(f.url)));
     let items = [];
     let failed = 0;
     results.forEach((r, i) => {
-      if (r.status === 'fulfilled') items.push(...r.value.map((it) => ({ ...it, source: feeds[i].source })));
-      else failed++;
+      if (r.status === 'rejected') {
+        failed++;
+        return;
+      }
+      const list = filter && !feeds[i].all ? r.value.filter((it) => filter(it.title)) : r.value;
+      items.push(...list.map((it) => ({ ...it, source: feeds[i].source })));
     });
-    if (filter) items = items.filter((it) => filter(it.title));
 
     // 同じ見出しを除外して新しい順に
     const seen = new Set();
@@ -111,6 +115,14 @@
       return true;
     });
     items.sort((a, b) => (b.date ? b.date.getTime() : 0) - (a.date ? a.date.getTime() : 0));
+    if (perSource) {
+      const counts = new Map();
+      items = items.filter((it) => {
+        const n = (counts.get(it.source.name) || 0) + 1;
+        counts.set(it.source.name, n);
+        return n <= perSource;
+      });
+    }
     return { items: items.slice(0, DASH.settings.news.perTab), failed, total: feeds.length };
   }
 
@@ -124,9 +136,45 @@
     ).join('');
   }
 
-  // 追加のニュースパネル（生成AIニュース・ITテックニュース）の共通処理
-  // feeds: 取得するフィード、filter: 見出しの絞り込み関数を返す（任意）、check: 設定に問題があればメッセージを返す（任意）
-  function createPanel({ list, status, feeds, filter, check }) {
+  // 全角英数字・大文字小文字・空白の違いを無視して比べる
+  function normalize(text) {
+    return text.normalize('NFKC').toLowerCase().replace(/\s/g, '');
+  }
+
+  // 見出しにいずれかのキーワードを含むかを調べる関数（キーワードがなければ null）
+  function keywordFilter(keywords) {
+    const words = keywords.map(normalize).filter(Boolean);
+    if (!words.length) return null;
+    return (title) => {
+      const t = normalize(title);
+      return words.some((k) => t.includes(k));
+    };
+  }
+
+  // 中継サーバー経由の URL（中継サーバーが未設定なら null）
+  function relayed(url, relayUrl = DASH.settings.relayUrl) {
+    if (!relayUrl) return null;
+    try {
+      const u = new URL(relayUrl);
+      u.searchParams.set('url', url);
+      return u.href;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // 設定で選ばれた提供元のフィード。relay のフィードは中継サーバー経由にし、未設定なら除く
+  function pickFeeds(list, sources) {
+    return list
+      .filter((f) => sources[f.key] !== false)
+      .map((f) => ({ url: f.relay ? relayed(f.url) : f.url, source: f.source, all: true }))
+      .filter((f) => f.url);
+  }
+
+  // 追加のニュースパネル（生成AIニュース・ITテックニュース・ITセキュリティニュース）の共通処理
+  // feeds: 取得するフィード、filter: 見出しの絞り込み関数を返す（任意）、check: 設定に問題があればメッセージを返す（任意）、
+  // perSource: 提供元ごとの最大件数（任意）
+  function createPanel({ list, status, feeds, filter, check, perSource }) {
     let timer = null;
     let seq = 0;
 
@@ -142,7 +190,7 @@
       const mySeq = ++seq;
       if (!listEl.children.length) listEl.innerHTML = '<li class="empty">読み込み中…</li>';
 
-      const { items, failed, total } = await collect(feeds(), filter ? filter() : null);
+      const { items, failed, total } = await collect(feeds(), filter ? filter() : null, perSource);
       if (mySeq !== seq) return;
       listEl.innerHTML = items.length
         ? itemsHtml(items)
@@ -250,8 +298,16 @@
       return (await fetchFeed(url)).length;
     },
 
-    // 生成AIニュース・ITテックニュースのパネルと共用
+    // 中継サーバーの接続確認用（設定画面）
+    testRelay(relayUrl) {
+      const feed = DASH.TECH_NEWS_FEEDS.find((f) => f.relay);
+      return DASH.news.test(relayed(feed.url, relayUrl));
+    },
+
+    // 生成AIニュース・ITテックニュース・ITセキュリティニュースのパネルと共用
     createPanel,
     allGenreFeeds,
+    keywordFilter,
+    pickFeeds,
   };
 })(window.DASH);
