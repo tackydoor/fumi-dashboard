@@ -25,10 +25,19 @@
     DASH.market.refresh();
   });
 
+  // ホーム画面から全画面で起動したときは全画面ボタンが不要
+  // （起動時点ではページから全画面にはできないので、ここで一致すればアプリとしての起動）
+  if (window.matchMedia('(display-mode: fullscreen)').matches) $('#btn-fullscreen').hidden = true;
+
   $('#btn-fullscreen').addEventListener('click', () => {
     if (document.fullscreenElement) document.exitFullscreen();
     else document.documentElement.requestFullscreen().catch(() => {});
   });
+
+  // ホーム画面に追加できるようにする（http(s) で開いたときだけ。file:// では使えない）
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
 
   // スリープ復帰やタブ復帰時に古い表示を更新
   let hiddenAt = 0;

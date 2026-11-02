@@ -71,6 +71,11 @@ body {
   margin: 0;
 }
 
+/* 画面の端で下にスワイプしたときの再読み込み（プルトゥリフレッシュ）を止める */
+html {
+  overscroll-behavior-y: none;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
