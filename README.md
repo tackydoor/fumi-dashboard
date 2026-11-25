@@ -10,9 +10,9 @@
 | 現在の天気 | 天気・気温・体感・湿度・風・降水量・日の出／日の入 | [Open-Meteo](https://open-meteo.com/)（気象庁モデル） |
 | 直近12時間の予報 | 1時間ごとの天気・気温、6時間ごとの降水確率 | Open-Meteo（気象庁モデル）、降水確率は[気象庁](https://www.jma.go.jp/bosai/forecast/) |
 | 週間天気予報 | 今日から8日分の天気・最高／最低気温・降水確率 | Open-Meteo（気象庁モデル）、降水確率は気象庁 |
-| ニュース | ジャンル別の見出し（日経・読売・産経・CNN） | [wor.jp](https://assets.wor.jp/) の RSS、CNN.co.jp の RSS |
+| ニュース | ジャンル別の見出し（日経・読売・産経・CNN） | [wor.jp](https://assets.wor.jp/) の RSS（中継サーバー経由）、CNN.co.jp の RSS |
 | 生成AIニュース（任意） | 生成AIに関する見出し | 上記に加え CNET Japan・ZDNET Japan・WIRED.jp の RSS |
-| ITテックニュース（任意） | IT・テクノロジーの見出し | CNET Japan・ZDNET Japan・WIRED.jp、日経・読売のテクノロジー面の RSS。ITmedia NEWS・Publickey は中継サーバー経由 |
+| ITテックニュース（任意） | IT・テクノロジーの見出し | CNET Japan・ZDNET Japan・WIRED.jp、日経・読売のテクノロジー面の RSS。日経・読売・ITmedia NEWS・Publickey は中継サーバー経由 |
 | ITセキュリティニュース（任意） | セキュリティの見出し | piyolog の RSS、主要紙・IT 系サイトのキーワード一致の見出し。Security NEXT・ITmedia NEWS（セキュリティ）・ScanNetSecurity・JPCERT/CC・IPA は中継サーバー経由 |
 | マーケット | 日経225先物、ドル/円、NYダウ、S&P500、NASDAQ100 など | [TradingView](https://jp.tradingview.com/) ウィジェット |
 
@@ -58,7 +58,7 @@ IT・テクノロジーのニュースだけを並べるパネルです。生成
 
 CNET Japan・ZDNET Japan・WIRED.jp と、日経・読売のテクノロジー面の見出しを新しい順に表示します（キーワードでの絞り込みはしません）。表示する提供元は⚙設定で選べます。
 
-ITmedia NEWS と Publickey は[中継サーバー](#中継サーバー)を設定すると表示されます。
+日経・読売・ITmedia NEWS・Publickey は[中継サーバー](#中継サーバー)を設定すると表示されます。
 
 ## ITセキュリティニュース
 
@@ -78,7 +78,9 @@ ITセキュリティのニュースだけを並べるパネルです。⚙設定
 
 ## 中継サーバー
 
-ITmedia NEWS・Publickey や、セキュリティ専門サイト（Security NEXT・ScanNetSecurity・JPCERT/CC・IPA など）のフィードは、ブラウザから直接読み込めない（CORS に対応していない）ため、自分で用意した中継サーバーを経由して取得します。中継サーバーの URL が未設定の間、これらの提供元は表示されません（設定画面では提供元の名前に※が付いています）。
+ニュースの日経・読売・産経（wor.jp の RSS）、ITmedia NEWS・Publickey、セキュリティ専門サイト（Security NEXT・ScanNetSecurity・JPCERT/CC・IPA など）のフィードは、ブラウザから直接読み込めない（CORS に対応していない）ため、自分で用意した中継サーバーを経由して取得します。中継サーバーの URL が未設定の間、これらの提供元は表示されません（設定画面では提供元の名前に※が付いています）。中継サーバーを設定しない場合、ニュースのパネルは CNN の記事だけになります。
+
+wor.jp の RSS は以前はブラウザから直接読み込めましたが、2026年11月に CORS のヘッダーが付かなくなったため、中継サーバー経由に変更しました。
 
 中継サーバーは [Cloudflare Workers](https://workers.cloudflare.com/) の無料プランで動かせます。
 
@@ -88,7 +90,7 @@ ITmedia NEWS・Publickey や、セキュリティ専門サイト（Security NEXT
 
 中継サーバーは `?url=<フィードのURL>` で指定したフィードを取得し、CORS のヘッダーを付けて返します。誰でも任意のサイトを取得できる踏み台にならないよう、中継するのはスクリプト先頭の `ALLOWED_HOSTS` にあるホストだけです。取得結果は5分間キャッシュします。
 
-すでに Worker をデプロイしている場合、提供元が増えたときは `ALLOWED_HOSTS` が更新されているので、Worker のコードを最新の内容に置き換えて再デプロイしてください。
+すでに Worker をデプロイしている場合、提供元が増えたときは `ALLOWED_HOSTS` が更新されているので、Worker のコードを最新の内容に置き換えて再デプロイしてください（古い Worker のままだと「接続を確認」で HTTP 403 になります）。
 
 ## レイアウトの編集
 
@@ -122,7 +124,7 @@ ITmedia NEWS・Publickey や、セキュリティ専門サイト（Security NEXT
 ## 注意事項
 
 - 天気・ニュース・株価の取得にはインターネット接続が必要です。
-- ブラウザから直接読み込める（CORS に対応した）データ元だけを使っています。RSS を追加する場合も CORS 対応のフィードしか表示できません（例: Yahoo!ニュースや Google ニュースの RSS は表示できません）。
+- CORS 非対応のフィードは中継サーバー経由で取得し、それ以外はブラウザから直接読み込める（CORS に対応した）データ元を使っています。⚙設定で RSS を追加する場合は CORS 対応のフィードしか表示できません（例: Yahoo!ニュースや Google ニュースの RSS は表示できません）。
 - 日経平均株価（現物指数）は TradingView のウィジェットで配信されていないため、日経225先物（大阪取引所）を表示しています。公式値は [日経平均プロフィル](https://indexes.nikkei.co.jp/nkave) を参照してください。
 - 株価は遅延している場合があります。投資判断には使わないでください。
 - `file://` で開いたときに位置情報が取得できないブラウザでは、設定で地点を指定してください。

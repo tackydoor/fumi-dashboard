@@ -84,8 +84,8 @@
 
         '<div class="sub"><div class="sub-title">提供元</div><div class="row wrap">' +
           Object.entries(DASH.NEWS_SOURCES).map(([key, src]) =>
-            '<label><input type="checkbox" data-act="src-toggle" data-key="' + key + '"' + (news.sources[key] !== false ? ' checked' : '') + '> ' + esc(src.name) + '</label>').join('') +
-        '</div></div>' +
+            '<label><input type="checkbox" data-act="src-toggle" data-key="' + key + '"' + (news.sources[key] !== false ? ' checked' : '') + '> ' + esc(src.name) + (src.relay ? '※' : '') + '</label>').join('') +
+        '</div><p class="muted small">※の提供元は下の「中継サーバー」を設定すると表示されます。</p></div>' +
 
         '<div class="row wrap">' +
           '<label>表示件数 <select data-field="perTab">' + [10, 15, 20, 30].map((n) => option(n, n + '件', news.perTab)).join('') + '</select></label>' +
@@ -127,7 +127,7 @@
 
       // 中継サーバー
       '<fieldset><legend>中継サーバー</legend>' +
-        '<p class="muted small">ITテックニュース・ITセキュリティニュースの※の提供元はブラウザから直接読み込めない（CORS 非対応の）ため、自分で用意した中継サーバー（Cloudflare Workers など）経由で取得します。未設定の間は表示されません。用意のしかたは README を参照してください。</p>' +
+        '<p class="muted small">ニュース（日経・読売・産経）と、ITテックニュース・ITセキュリティニュースの※の提供元はブラウザから直接読み込めない（CORS 非対応の）ため、自分で用意した中継サーバー（Cloudflare Workers など）経由で取得します。未設定の間は表示されません。用意のしかたは README を参照してください。</p>' +
         '<div class="row"><input type="url" id="relay-url" data-field="relayUrl" placeholder="https://feed-relay.example.workers.dev/" value="' + esc(s.relayUrl) + '"><button type="button" class="btn" data-act="relay-test">接続を確認</button></div>' +
         '<div class="muted small" id="relay-msg"></div>' +
       '</fieldset>' +
@@ -227,7 +227,7 @@
           const count = await DASH.news.testRelay(url);
           msg.textContent = '接続できました（' + count + '件の記事）。';
         } catch (err) {
-          msg.textContent = '中継サーバー経由で読み込めませんでした（' + err.message + '）。URL と中継サーバーの設定を確認してください。';
+          msg.textContent = '中継サーバー経由で読み込めませんでした（' + err.message + '）。URL と中継サーバーの設定を確認してください。HTTP 403 の場合は、Worker のコードを relay/cloudflare-worker.js の最新の内容に置き換えて再デプロイしてください。';
         }
         return;
       }

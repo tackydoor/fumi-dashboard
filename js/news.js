@@ -58,11 +58,24 @@
     return tab.name || 'RSS';
   }
 
+  // relay の提供元は中継サーバー経由にし、中継サーバーが未設定なら除く
   function genreFeeds(g) {
     const sources = DASH.settings.news.sources;
     return g.feeds
       .filter(([key]) => sources[key] !== false)
-      .map(([key, url]) => ({ url, source: DASH.NEWS_SOURCES[key] }));
+      .map(([key, url]) => {
+        const source = DASH.NEWS_SOURCES[key];
+        return { url: source.relay ? relayed(url) : url, source };
+      })
+      .filter((f) => f.url);
+  }
+
+  // 中継サーバーが未設定のため、タブに表示できない提供元があるか
+  function missingRelay(tab) {
+    if (DASH.settings.relayUrl || tab.type === 'rss') return false;
+    const sources = DASH.settings.news.sources;
+    const genres = tab.type === 'genre' ? DASH.NEWS_GENRES.filter((g) => g.id === tab.id) : DASH.NEWS_GENRES;
+    return genres.some((g) => g.feeds.some(([key]) => sources[key] !== false && DASH.NEWS_SOURCES[key].relay));
   }
 
   // 全ジャンルのフィード（重複なし）
@@ -234,14 +247,19 @@
     const { items, failed, total } = await loadTab(tab);
     if (seq !== renderSeq) return; // 別のタブに切り替わった
 
+    const noRelay = missingRelay(tab);
     if (!items.length) {
       list.innerHTML = '<li class="empty">' + (failed && failed === total
         ? 'ニュースを取得できませんでした。' + (tab.type === 'rss' ? 'このフィードはブラウザからの直接取得（CORS）に対応していない可能性があります。' : '')
-        : '該当する記事がありません。') + '</li>';
+        : !total && noRelay
+          ? '日経・読売・産経のニュースは、⚙設定で「中継サーバー」を設定すると表示されます。'
+          : '該当する記事がありません。') + '</li>';
     } else {
       list.innerHTML = itemsHtml(items);
     }
-    status.textContent = '更新 ' + hhmm(new Date()) + (failed ? '（' + failed + '件のフィードを取得できませんでした）' : '');
+    status.textContent = '更新 ' + hhmm(new Date()) +
+      (failed ? '（' + failed + '件のフィードを取得できませんでした）' : '') +
+      (noRelay && total ? '（日経・読売・産経は中継サーバーの設定が必要です）' : '');
   }
 
   function select(index) {
@@ -299,9 +317,11 @@
     },
 
     // 中継サーバーの接続確認用（設定画面）
+    // 古い Worker（wor.jp を中継しない）を見分けられるよう、ニュースの主要フィードで確認する
     testRelay(relayUrl) {
-      const feed = DASH.TECH_NEWS_FEEDS.find((f) => f.relay);
-      return DASH.news.test(relayed(feed.url, relayUrl));
+      const top = DASH.NEWS_GENRES.find((g) => g.id === 'top');
+      const [, url] = top.feeds.find(([k]) => DASH.NEWS_SOURCES[k].relay);
+      return DASH.news.test(relayed(url, relayUrl));
     },
 
     // 生成AIニュース・ITテックニュース・ITセキュリティニュースのパネルと共用

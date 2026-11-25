@@ -6,11 +6,13 @@ window.DASH = window.DASH || {};
 (function (DASH) {
   const WOR = 'https://assets.wor.jp/rss/rdf/';
 
-  // ニュース提供元（CORS で直接取得できるフィード）
+  // ニュース提供元
+  // relay: CORS に対応していないため、設定した中継サーバー（relay/cloudflare-worker.js）経由で取得する（以下同じ）
+  // （日経・読売・産経の wor.jp のフィードは 2026年11月に CORS のヘッダーが付かなくなった）
   DASH.NEWS_SOURCES = {
-    nikkei: { name: '日経', className: 'src-nikkei' },
-    yomiuri: { name: '読売', className: 'src-yomiuri' },
-    sankei: { name: '産経', className: 'src-sankei' },
+    nikkei: { name: '日経', className: 'src-nikkei', relay: true },
+    yomiuri: { name: '読売', className: 'src-yomiuri', relay: true },
+    sankei: { name: '産経', className: 'src-sankei', relay: true },
     cnn: { name: 'CNN', className: 'src-cnn' },
   };
 
@@ -22,15 +24,14 @@ window.DASH = window.DASH || {};
   };
 
   // ITテックニュースのフィード（key は設定での選択に使う）
-  // relay: CORS に対応していないため、設定した中継サーバー（relay/cloudflare-worker.js）経由で取得する（以下同じ）
   DASH.TECH_NEWS_FEEDS = [
     { key: 'cnet', label: 'CNET Japan', url: DASH.TECH_SOURCES.cnet.url, source: DASH.TECH_SOURCES.cnet },
     { key: 'zdnet', label: 'ZDNET Japan', url: DASH.TECH_SOURCES.zdnet.url, source: DASH.TECH_SOURCES.zdnet },
     { key: 'wired', label: 'WIRED.jp', url: DASH.TECH_SOURCES.wired.url, source: DASH.TECH_SOURCES.wired },
     { key: 'itmedia', label: 'ITmedia NEWS', url: 'https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml', source: { name: 'ITmedia', className: 'src-itmedia' }, relay: true },
     { key: 'publickey', label: 'Publickey', url: 'https://www.publickey1.jp/atom.xml', source: { name: 'Publickey', className: 'src-publickey' }, relay: true },
-    { key: 'nikkei', label: '日経（テクノロジー）', url: WOR + 'nikkei/technology.rdf', source: DASH.NEWS_SOURCES.nikkei },
-    { key: 'yomiuri', label: '読売（テクノロジー）', url: WOR + 'yomiuri/science.rdf', source: DASH.NEWS_SOURCES.yomiuri },
+    { key: 'nikkei', label: '日経（テクノロジー）', url: WOR + 'nikkei/technology.rdf', source: DASH.NEWS_SOURCES.nikkei, relay: true },
+    { key: 'yomiuri', label: '読売（テクノロジー）', url: WOR + 'yomiuri/science.rdf', source: DASH.NEWS_SOURCES.yomiuri, relay: true },
   ];
 
   // ITセキュリティニュースの専門サイトのフィード（すべての記事を表示する）

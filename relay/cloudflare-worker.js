@@ -8,6 +8,7 @@
 // 中継するのは ALLOWED_HOSTS のホストだけにしている。
 
 const ALLOWED_HOSTS = [
+  'assets.wor.jp',
   'rss.itmedia.co.jp',
   'www.publickey1.jp',
   'www.security-next.com',
